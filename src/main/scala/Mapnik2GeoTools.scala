@@ -1,3 +1,4 @@
+import util.parsing.combinator._
 import xml._
 import xml.transform._
 
@@ -71,6 +72,35 @@ object Mapnik2GeoTools {
       }
   }
 
+  object FilterParser extends RegexParsers {
+    val property = 
+      """\[\p{Graph}+\]""".r map (s => <PropertyName>{s}</PropertyName>)
+
+    val value = 
+      """'\p{Graph}+'""".r map (s => <Literal>{s}</Literal>)
+
+    val comparison = 
+      (property <~ "=") ~ value map {
+        case a ~ b => <PropertyIsEqualTo>{a}{b}</PropertyIsEqualTo>
+      }
+
+    def toXML(text: String): Node =
+      parseAll(comparison, text).get
+  }
+
+  object FilterTransformer extends RewriteRule {
+    override def transform(node: Node): Seq[Node] =
+      node match {
+        case e: Elem if e.label == "Filter" =>
+          val translated = e.child flatMap {
+            case Text(text) => FilterParser.toXML(text)
+            case n => n
+          }
+          e.copy(child = translated)
+        case n => n
+      }
+  }
+
   def writeStyle(out: java.io.File, style: Node) {
       val name = style.attribute("name").map(_.text).getOrElse("style")
       val wrapper =
@@ -94,12 +124,14 @@ object Mapnik2GeoTools {
   }
 
   def main(args: Array[String]) {
-    val convert = new RuleTransformer(
-      PointSymTransformer,
-      LineSymTransformer,
-      PolygonSymTransformer,
-      RuleCleanup
-    )
+    val convert = 
+      new RuleTransformer(
+        FilterTransformer,
+        PointSymTransformer,
+        LineSymTransformer,
+        PolygonSymTransformer,
+        RuleCleanup
+      )
     for (arg <- args) {
       val source = new java.io.File(arg)
       val outdir = new java.io.File(source.getParent(), "output")
