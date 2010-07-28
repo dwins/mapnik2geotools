@@ -84,8 +84,21 @@ object Mapnik2GeoTools {
         case a ~ b => <PropertyIsEqualTo>{a}{b}</PropertyIsEqualTo>
       }
 
+    val conjunction = "(?i:or|and)".r map (_.toLowerCase)
+
+    val logical =
+      comparison ~ rep1(conjunction ~ comparison) map {
+        case start ~ clauses =>
+          clauses.foldLeft(start) {
+            case (a, "or" ~ b) => <Or>{a}{b}</Or>
+            case (a, "and" ~ b) => <And>{a}{b}</And>
+          }
+      }
+
+    val expression = logical | comparison
+
     def toXML(text: String): Node =
-      parseAll(comparison, text).get
+      parseAll(expression, text).get
   }
 
   object FilterTransformer extends RewriteRule {
