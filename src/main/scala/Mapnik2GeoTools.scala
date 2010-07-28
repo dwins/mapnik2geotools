@@ -84,10 +84,14 @@ object Mapnik2GeoTools {
         case a ~ b => <PropertyIsEqualTo>{a}{b}</PropertyIsEqualTo>
       }
 
+    val negated = "not" ~> comparison map (c => <Not>{c}</Not>)
+
+    val child = comparison | negated
+
     val conjunction = "(?i:or|and)".r map (_.toLowerCase)
 
     val logical =
-      comparison ~ rep1(conjunction ~ comparison) map {
+      child ~ rep1(conjunction ~ child) map {
         case start ~ clauses =>
           clauses.foldLeft(start) {
             case (a, "or" ~ b) => <Or>{a}{b}</Or>
@@ -95,7 +99,7 @@ object Mapnik2GeoTools {
           }
       }
 
-    val expression = logical | comparison
+    val expression = logical | child
 
     def toXML(text: String): Node =
       parseAll(expression, text).get
