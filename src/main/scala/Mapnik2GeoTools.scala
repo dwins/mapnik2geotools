@@ -86,20 +86,20 @@ object Mapnik2GeoTools {
 
     val negated = "not" ~> comparison map (c => <Not>{c}</Not>)
 
-    val child = comparison | negated
-
     val conjunction = "(?i:or|and)".r map (_.toLowerCase)
 
-    val logical =
-      child ~ rep1(conjunction ~ child) map {
+    lazy val nested: Parser[Node] = "(" ~> expression <~ ")"
+
+    lazy val child: Parser[Node] = nested | negated | comparison
+
+    val expression =
+      child ~ rep(conjunction ~ child) map {
         case start ~ clauses =>
           clauses.foldLeft(start) {
             case (a, "or" ~ b) => <Or>{a}{b}</Or>
             case (a, "and" ~ b) => <And>{a}{b}</And>
           }
       }
-
-    val expression = logical | child
 
     def toXML(text: String): Node =
       parseAll(expression, text).get
