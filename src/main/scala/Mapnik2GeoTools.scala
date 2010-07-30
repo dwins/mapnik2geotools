@@ -26,10 +26,38 @@ object Mapnik2GeoTools {
       }
   }
 
+  def writeStyle(out: java.io.File, style: Node) {
+      val name = style.attribute("name").map(_.text).getOrElse("style")
+      val wrapper =
+        <StyledLayerDescriptor
+          version="1.0.0"
+          xmlns="http://www.opengis.net/sld"
+          xmlns:ogc="http://www.opengis.net/ogc"
+          xmlns:xlink="http://www.w3.org/1999/xlink"
+        >
+          <NamedLayer>
+            <Name>{name}</Name>
+            <UserStyle>
+              <Name>{name}</Name>
+              <FeatureTypeStyle>
+                {style.child}
+              </FeatureTypeStyle>
+            </UserStyle>
+          </NamedLayer>
+        </StyledLayerDescriptor>
+      XML.save(new java.io.File(out, name + ".sld").getPath(), wrapper)
+  }
+
   def main(args: Array[String]) {
     val convert = new RuleTransformer(PointSymTransformer)
     for (arg <- args) {
-      val doc = convert(XML.loadFile(arg))
+      val source = new java.io.File(arg)
+      val outdir = new java.io.File(source.getParent(), "output")
+      outdir.mkdirs()
+      val doc = convert(XML.loadFile(source))
+      for (style <- doc \\ "Style") {
+        writeStyle(outdir, style)
+      }
       XML.save(arg.replaceAll(".xml$", "") + ".sld", doc)
     }
   }
