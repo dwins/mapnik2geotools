@@ -44,6 +44,33 @@ object Mapnik2GeoTools {
       }
   }
 
+  /**
+   * In order to be valid against the official schema, the elements of an SLD
+   * rule have to be in a particular order.  This rewrite rule rearranges the
+   * Rule elements properly.
+   */
+  object RuleCleanup extends RewriteRule {
+    override def transform(node: Node): Seq[Node] =
+      node match {
+        case rule: Elem if rule.label == "Rule" =>
+          val ordered =
+            (rule \ "MinScaleDenominator") ++
+            (rule \ "MaxScaleDenominator") ++
+            (rule \ "Filter") ++
+            (rule \ "PolygonSymbolizer") ++
+            (rule \ "LineSymbolizer") ++
+            (rule \ "PointSymbolizer") ++
+            (rule \ "TextSymbolizer")
+
+          // for easier debugging, throw the things that *didn't* get sorted in
+          // at the end
+          val child = ordered ++ (rule.child diff ordered)
+
+          rule.copy(child = child)
+        case n => n
+      }
+  }
+
   def writeStyle(out: java.io.File, style: Node) {
       val name = style.attribute("name").map(_.text).getOrElse("style")
       val wrapper =
@@ -70,7 +97,8 @@ object Mapnik2GeoTools {
     val convert = new RuleTransformer(
       PointSymTransformer,
       LineSymTransformer,
-      PolygonSymTransformer
+      PolygonSymTransformer,
+      RuleCleanup
     )
     for (arg <- args) {
       val source = new java.io.File(arg)
