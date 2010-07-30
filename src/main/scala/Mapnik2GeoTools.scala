@@ -7,7 +7,7 @@ object Mapnik2GeoTools {
       val attmap = point.attributes.asAttrMap
       val path = attmap.get("file")
 
-      <PointSymbolizer> { 
+      <PointSymbolizer> {
         if (path.isDefined) {
           <Graphic>
             <ExternalGraphic>
@@ -20,7 +20,7 @@ object Mapnik2GeoTools {
 
     override def transform(node: Node): Seq[Node] =
       node match {
-        case e: Elem if e.label == "PointSymbolizer" => 
+        case e: Elem if e.label == "PointSymbolizer" =>
           convertPointSymbolizer(e)
         case n => n
       }
