@@ -26,6 +26,24 @@ object Mapnik2GeoTools {
       }
   }
 
+  object LineSymTransformer extends RewriteRule {
+    override def transform(node: Node): Seq[Node] =
+      node match {
+        case e: Elem if e.label == "LineSymbolizer" =>
+          e.copy(child = <Stroke>{e.child}</Stroke>)
+        case n => n
+      }
+  }
+
+  object PolygonSymTransformer extends RewriteRule {
+    override def transform(node: Node): Seq[Node] =
+      node match {
+        case e: Elem if e.label == "PolygonSymbolizer" =>
+          e.copy(child = <Fill>{e.child}</Fill>)
+        case n => n
+      }
+  }
+
   def writeStyle(out: java.io.File, style: Node) {
       val name = style.attribute("name").map(_.text).getOrElse("style")
       val wrapper =
@@ -49,7 +67,11 @@ object Mapnik2GeoTools {
   }
 
   def main(args: Array[String]) {
-    val convert = new RuleTransformer(PointSymTransformer)
+    val convert = new RuleTransformer(
+      PointSymTransformer,
+      LineSymTransformer,
+      PolygonSymTransformer
+    )
     for (arg <- args) {
       val source = new java.io.File(arg)
       val outdir = new java.io.File(source.getParent(), "output")
