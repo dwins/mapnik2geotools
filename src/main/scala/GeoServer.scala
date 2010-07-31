@@ -28,6 +28,7 @@ class GeoServer(base: String, auth: (String, String)) {
     )
     val status = client.executeMethod(post)
     val in = post.getResponseBodyAsString()
+    post.releaseConnection()
   }
 
   def updateStyle(name: String, style: Node) {
@@ -41,5 +42,6 @@ class GeoServer(base: String, auth: (String, String)) {
     )
     val status = client.executeMethod(put)
     val in = put.getResponseBodyAsString()
+    put.releaseConnection()
   }
 }
