@@ -20,7 +20,7 @@ class GeoServer(base: String, auth: (String, String)) {
   def addStyle(name: String, style: Node) {
     val url = base + "/styles?name=" + encode(name, "UTF-8")
     val post =
-      new httpclient.methods.PostMethod(base + "/styles/")
+      new httpclient.methods.PostMethod(url)
     post.setRequestEntity(
       new httpclient.methods.StringRequestEntity(
         style.toString, "application/vnd.ogc.sld+xml", "utf-8"
@@ -28,5 +28,18 @@ class GeoServer(base: String, auth: (String, String)) {
     )
     val status = client.executeMethod(post)
     val in = post.getResponseBodyAsString()
+  }
+
+  def updateStyle(name: String, style: Node) {
+    val url = "%s/styles/%s.sld".format(base, name)
+    val put =
+      new httpclient.methods.PutMethod(url)
+    put.setRequestEntity(
+      new httpclient.methods.StringRequestEntity(
+        style.toString, "application/vnd.ogc.sld+xml", "utf-8"
+      )
+    )
+    val status = client.executeMethod(put)
+    val in = put.getResponseBodyAsString()
   }
 }
