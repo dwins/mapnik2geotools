@@ -73,16 +73,43 @@ object Mapnik2GeoTools {
   }
 
   object FilterParser extends RegexParsers {
-    val property = 
-      """\[\p{Graph}+\]""".r map (s => <PropertyName>{s}</PropertyName>)
+    val property =
+      """\[\p{Graph}+\]""".r map (s =>
+        <PropertyName>{s.substring(1, s.length -1)}</PropertyName>
+      )
 
-    val value = 
-      """'\p{Graph}+'""".r map (s => <Literal>{s}</Literal>)
+    val literal =
+      """'.*?'""".r ^^ { s => s.substring(1, s.length -1) } |
+      """\d+""".r
 
-    val comparison = 
-      (property <~ "=") ~ value map {
-        case a ~ b => <PropertyIsEqualTo>{a}{b}</PropertyIsEqualTo>
+    val value = literal map (s => <Literal>{s}</Literal>)
+
+    val equal =
+      (property <~ "=") ~ value map { case a ~ b =>
+        <PropertyIsEqualTo>{a}{b}</PropertyIsEqualTo>
       }
+
+    val greater =
+      (property <~ ">") ~ value map { case a ~ b =>
+        <PropertyIsGreaterThan>{a}{b}</PropertyIsGreaterThan>
+      }
+
+    val greaterOrEqual =
+      (property <~ ">=") ~ value map { case a ~ b =>
+        <PropertyIsGreaterOrEqual>{a}{b}</PropertyIsGreaterOrEqual>
+      }
+
+    val less =
+      (property <~ "<") ~ value map { case a ~ b =>
+        <PropertyIsLessThan>{a}{b}</PropertyIsLessThan>
+      }
+
+    val like =
+      (property <~ ("." ~ "match" ~ "(")) ~ (value <~ ")") map { case a ~ b =>
+        <PropertyIsLike>{a}{b}</PropertyIsLike>
+      }
+
+    val comparison = equal | greater | greaterOrEqual | less | like
 
     val negated = "not" ~> comparison map (c => <Not>{c}</Not>)
 
