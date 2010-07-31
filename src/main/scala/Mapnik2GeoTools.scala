@@ -128,8 +128,17 @@ object Mapnik2GeoTools {
           }
       }
 
-    def toXML(text: String): Node =
-      parseAll(expression, text).get
+    def toXML(text: String): Seq[Node] = {
+      val result = parseAll(expression, text)
+      if (result.successful) {
+        Seq(result.get)
+      } else {
+        Seq(
+          Comment("Unparsed filter - " + text),
+          Comment(result.toString)
+        )
+      }
+    }
   }
 
   object FilterTransformer extends RewriteRule {
