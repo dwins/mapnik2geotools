@@ -55,9 +55,9 @@ object Mapnik2GeoTools {
       node match {
         case rule: Elem if rule.label == "Rule" =>
           val ordered =
+            (rule \ "Filter") ++
             (rule \ "MinScaleDenominator") ++
             (rule \ "MaxScaleDenominator") ++
-            (rule \ "Filter") ++
             (rule \ "PolygonSymbolizer") ++
             (rule \ "LineSymbolizer") ++
             (rule \ "PointSymbolizer") ++
@@ -149,7 +149,9 @@ object Mapnik2GeoTools {
             case Text(text) => FilterParser.toXML(text)
             case n => n
           }
-          e.copy(child = translated)
+          val ogc =
+            new NamespaceBinding(null, "http://www.opengis.net/ogc", e.scope)
+          e.copy(scope = ogc, child = translated)
         case n => n
       }
   }
