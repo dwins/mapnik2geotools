@@ -238,9 +238,7 @@ object Mapnik2GeoTools {
       val doc = convert(XML.loadFile(source))
       for (style <- doc \\ "Style") writeStyle(outdir, style)
       writeLayer(outdir, doc \\ "Layer")
-			
-			XML.save(arg.replaceAll(".xml$", "") + ".sld", doc)
-			
+      save(new java.io.File(arg.replaceAll(".xml$", "") + ".sld"), doc)
     }
   }
 }
