@@ -71,6 +71,12 @@ object Mapnik2GeoTools {
       }
   }
 
+  def save(file: java.io.File, xml: Node) {
+    val writer = new java.io.FileWriter(file)
+    writer.write(new PrettyPrinter(80, 2).format(xml))
+    writer.close()
+  }
+
   def writeStyle(out: java.io.File, style: Node) {
       val name = style.attribute("name").map(_.text).getOrElse("style")
       val wrapper =
@@ -90,7 +96,7 @@ object Mapnik2GeoTools {
             </UserStyle>
           </NamedLayer>
         </StyledLayerDescriptor>
-      XML.save(new java.io.File(out, name + ".sld").getPath(), wrapper)
+      save(new java.io.File(out, name + ".sld"), wrapper)
   }
 
   def main(args: Array[String]) {
