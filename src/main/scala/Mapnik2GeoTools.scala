@@ -33,7 +33,7 @@ object Mapnik2GeoTools {
       <TextSymbolizer> {
         if (attmap contains "name")
           <Label>
-            { if ((attmap contains "text_convert") && attmap ("text_convert") == "toupper")
+            { if (attmap.get("text_convert") == Some("toupper"))
                 <ogc:Function name="strToUpperCase">
                   <ogc:PropertyName>{ attmap("name") }</ogc:PropertyName>
                 </ogc:Function>
@@ -43,14 +43,14 @@ object Mapnik2GeoTools {
           </Label>
         }
 
-        { if ( (attmap contains "fontset_name") && attmap ("fontset_name") == "oblique-fonts")
+        { if (attmap.get("fontset_name") == Some("oblique-fonts"))
             <Font>
               <CssParameter name="font-family">SansSerif</CssParameter>
               <CssParameter name="font-size">{ attmap("size") }</CssParameter>
             </Font>
         }
 
-        { if ( (attmap contains "fontset_name") && attmap ("fontset_name") == "bold-fonts")
+        { if (attmap.get("fontset_name") == Some("bold-fonts"))
             <Font>
               <CssParameter name="font-family">SansSerif</CssParameter>
               <CssParameter name="font-size"> { attmap("size") }</CssParameter>
@@ -188,7 +188,6 @@ object Mapnik2GeoTools {
     for (layer <- layers) {
       val name = layer.attribute("name").map(_.text).get
 
-      val fruits = "apples" + " and " + "pears"
       val wrapper =
         """
         /* """ + name + """ */
