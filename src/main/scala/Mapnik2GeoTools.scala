@@ -24,65 +24,62 @@ object Mapnik2GeoTools {
           convertPointSymbolizer(e)
         case n => n
       }
-  	}
+  }
 
- 	object TextSymTransformer extends RewriteRule {
-		def convertTextSymbolizer(text: Elem): Node = {
-			val attmap = text.attributes.asAttrMap
-			
-			<TextSymbolizer> {
-				if (attmap contains "name")
-					<Label>
-						{ if ((attmap contains "text_convert") && attmap ("text_convert") == "toupper")
-	              <ogc:Function name="strToUpperCase">
-	                <ogc:PropertyName>{ attmap("name") }</ogc:PropertyName>
-	              </ogc:Function>
-						
-							else 
-								<ogc:PropertyName>{ attmap("name") }</ogc:PropertyName>
-						}
-					</Label>
-				}
-										
-				{	if ( (attmap contains "fontset_name") && attmap ("fontset_name") == "oblique-fonts")
-					<Font>
-						<CssParameter name="font-family">SansSerif</CssParameter>
-            <CssParameter name="font-size">{ attmap("size") }</CssParameter>
-					</Font>
-				}
+  object TextSymTransformer extends RewriteRule {
+    def convertTextSymbolizer(text: Elem): Node = {
+      val attmap = text.attributes.asAttrMap
 
-				{	if ( (attmap contains "fontset_name") && attmap ("fontset_name") == "bold-fonts")
-					<Font>
-						<CssParameter name="font-family">SansSerif</CssParameter>
-            <CssParameter name="font-size"> { attmap("size") }</CssParameter>
-            <CssParameter name="font-style">bold</CssParameter>
-					</Font>	
-					
-				}
-				
-				{
-					<LabelPlacement>
-            <PointPlacement>
-              <AnchorPoint>
-                <AnchorPointX>
-                  <ogc:Literal>0.5</ogc:Literal>
-                </AnchorPointX>
-                <AnchorPointY>
-                  <ogc:Literal>0.5</ogc:Literal>
-                </AnchorPointY>
-              </AnchorPoint>
-              <Rotation>
-                <ogc:Literal>0</ogc:Literal>
-              </Rotation>
-            </PointPlacement>
-          </LabelPlacement>
-				}
-				{	if (attmap contains "halo_fill") {
-					val fill = attmap("halo_fill").dropRight(1).drop(5)  // trims off "rgba(" and ")"
-					val rgb = fill.split(",").take(3).map(_.toInt)
-					val colorcode = "#%2x%2x%2x".format(rgb(0), rgb(1), rgb(2))		
-					val opacity = fill.split(",").last.toDouble
-						<Halo>
+      <TextSymbolizer> {
+        if (attmap contains "name")
+          <Label>
+            { if ((attmap contains "text_convert") && attmap ("text_convert") == "toupper")
+                <ogc:Function name="strToUpperCase">
+                  <ogc:PropertyName>{ attmap("name") }</ogc:PropertyName>
+                </ogc:Function>
+              else
+                <ogc:PropertyName>{ attmap("name") }</ogc:PropertyName>
+            }
+          </Label>
+        }
+
+        { if ( (attmap contains "fontset_name") && attmap ("fontset_name") == "oblique-fonts")
+            <Font>
+              <CssParameter name="font-family">SansSerif</CssParameter>
+              <CssParameter name="font-size">{ attmap("size") }</CssParameter>
+            </Font>
+        }
+
+        { if ( (attmap contains "fontset_name") && attmap ("fontset_name") == "bold-fonts")
+            <Font>
+              <CssParameter name="font-family">SansSerif</CssParameter>
+              <CssParameter name="font-size"> { attmap("size") }</CssParameter>
+              <CssParameter name="font-style">bold</CssParameter>
+            </Font>
+        }
+
+        <LabelPlacement>
+          <PointPlacement>
+            <AnchorPoint>
+              <AnchorPointX>
+                <ogc:Literal>0.5</ogc:Literal>
+              </AnchorPointX>
+              <AnchorPointY>
+                <ogc:Literal>0.5</ogc:Literal>
+              </AnchorPointY>
+            </AnchorPoint>
+            <Rotation>
+              <ogc:Literal>0</ogc:Literal>
+            </Rotation>
+          </PointPlacement>
+        </LabelPlacement>
+
+        { if (attmap contains "halo_fill") {
+            val fill = attmap("halo_fill").dropRight(1).drop(5)  // trims off "rgba(" and ")"
+            val rgb = fill.split(",").take(3).map(_.toInt)
+            val colorcode = "#%2x%2x%2x".format(rgb(0), rgb(1), rgb(2))
+            val opacity = fill.split(",").last.toDouble
+            <Halo>
               <Radius>
                 <ogc:Literal> { attmap.getOrElse("halo_radius", "1") } </ogc:Literal>
               </Radius>
@@ -91,29 +88,26 @@ object Mapnik2GeoTools {
                 <CssParameter name="fill-opacity">{opacity}</CssParameter>
               </Fill>
             </Halo>
-					}
-				}
-				
-				{	if (attmap contains "fill")
-        <Fill>
-          <CssParameter name="fill">{attmap("fill") }</CssParameter>
-        </Fill>
-				}
-				
-				{	Comment(attmap.toString) }
-				
-				
-			</TextSymbolizer> 
-			
-		}
-		
-		override def transform(node: Node): Seq[Node] =
+          }
+        }
+
+        { if (attmap contains "fill")
+            <Fill>
+              <CssParameter name="fill">{attmap("fill") }</CssParameter>
+            </Fill>
+        }
+
+        { Comment(attmap.toString) }
+      </TextSymbolizer>
+    }
+
+    override def transform(node: Node): Seq[Node] =
       node match {
         case e: Elem if e.label == "TextSymbolizer" =>
           convertTextSymbolizer(e)
         case n => n
       }
-	}	
+  }
 
   object LineSymTransformer extends RewriteRule {
     override def transform(node: Node): Seq[Node] =
@@ -188,39 +182,40 @@ object Mapnik2GeoTools {
       save(new java.io.File(out, name + ".sld"), wrapper)
   }
 
-	def writeLayer(out: java.io.File, layers: Seq[Node]) {
+  def writeLayer(out: java.io.File, layers: Seq[Node]) {
     val writer = new java.io.FileWriter(new java.io.File(out, "tables.sql"))
-    
-		for (layer <- layers) {  
-			val name = layer.attribute("name").map(_.text).get
-			
-			val fruits = "apples" + " and " + "pears"
-		val wrapper =
-        """
-				/* """ + name + """ */
-				SELECT DropGeometryColumn('','""" + name + """','way');
-				DROP TABLE """" + name + """";
-				CREATE TABLE """ + name + """ (id serial primary key, osm_id integer, name text, disused text, waterway text, z_order integer ) ;
-				SELECT AddGeometryColumn('','""" + name + """','way',900913,'LINESTRING',2);
-				INSERT INTO """ + name + """ (name, disused, waterway, z_order, way)
-				SELECT lines.osm_id,
-				       lines.name,
-				       lines.waterway,
-				       lines.z_order,
-				       lines.way
-				FROM planet_osm_line AS lines
-				WHERE (lines.waterway='river'
-				       OR lines.waterway='weir'
-				       OR (lines.waterway='canal'
-				           AND NOT disused='yes'))
-				ORDER BY z_order DESC;
 
-				CREATE INDEX """ + name + """_idx ON """ + name + """ USING GIST(way);
-				"""
-				
-				writer.write(wrapper)
-			}
-				writer.close()
+    for (layer <- layers) {
+      val name = layer.attribute("name").map(_.text).get
+
+      val fruits = "apples" + " and " + "pears"
+      val wrapper =
+        """
+        /* """ + name + """ */
+        SELECT DropGeometryColumn('','""" + name + """','way');
+        DROP TABLE """" + name + """";
+        CREATE TABLE """ + name + """ (id serial primary key, osm_id integer, name text, disused text, waterway text, z_order integer ) ;
+        SELECT AddGeometryColumn('','""" + name + """','way',900913,'LINESTRING',2);
+        INSERT INTO """ + name + """ (name, disused, waterway, z_order, way)
+        SELECT lines.osm_id,
+               lines.name,
+               lines.waterway,
+               lines.z_order,
+               lines.way
+        FROM planet_osm_line AS lines
+        WHERE (lines.waterway='river'
+               OR lines.waterway='weir'
+               OR (lines.waterway='canal'
+                   AND NOT disused='yes'))
+        ORDER BY z_order DESC;
+
+        CREATE INDEX """ + name + """_idx ON """ + name + """ USING GIST(way);
+        """
+
+      writer.write(wrapper)
+    }
+
+    writer.close()
   }
 
   def main(args: Array[String]) {
