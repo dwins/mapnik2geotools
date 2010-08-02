@@ -68,6 +68,16 @@ object Mapnik2GeoTools {
                 <ogc:Literal>0.5</ogc:Literal>
               </AnchorPointY>
             </AnchorPoint>
+            { if ((attmap contains "dx") && (attmap contains "dy"))
+              <Displacement>
+                <DisplacementX>
+                  <ogc:Literal>{ attmap("dx") }</ogc:Literal>
+                </DisplacementX>
+                <DisplacementY>
+                  <ogc:Literal>{ attmap("dy") }</ogc:Literal>
+                </DisplacementY>
+              </Displacement>
+            }
             <Rotation>
               <ogc:Literal>0</ogc:Literal>
             </Rotation>
