@@ -186,10 +186,38 @@ object Mapnik2GeoTools {
   }
 
   object PolygonSymTransformer extends RewriteRule {
+    def convertPatternSymbolizer(e: Elem): Seq[Node] = {
+      val attrs = e.attributes.asAttrMap
+
+      val format =
+        attrs.getOrElse("type", "image/png") match {
+          case "png" => "image/png"
+          case "gif" => "image/gif"
+          case "jpeg" => "image/jpeg"
+          case other => other
+        }
+
+      <PolygonSymbolizer>
+        <Fill>
+          <GraphicFill>
+            <Graphic>
+              <ExternalGraphic>
+                <OnlineResource xlink:href={ attrs("file") }/>
+                <Format>{ format }</Format>
+              </ExternalGraphic>
+              <Size>{ attrs("height") }</Size>
+            </Graphic>
+          </GraphicFill>
+        </Fill>
+      </PolygonSymbolizer>
+    }
+
     override def transform(node: Node): Seq[Node] =
       node match {
         case e: Elem if e.label == "PolygonSymbolizer" =>
           e.copy(child = <Fill>{e.child}</Fill>)
+        case e: Elem if e.label == "PolygonPatternSymbolizer" =>
+          convertPatternSymbolizer(e)
         case n => n
       }
   }
