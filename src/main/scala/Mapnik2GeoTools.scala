@@ -3,6 +3,8 @@ import xml._
 import xml.transform._
 
 object Mapnik2GeoTools {
+  val gsDataDir = new java.net.URL("file:///home/dwins/Projects/osm_cpk_data/styles/")
+
   object PointSymTransformer extends RewriteRule {
     def convertPointSymbolizer(point: Elem): Node = {
       val attmap = point.attributes.asAttrMap
@@ -17,7 +19,7 @@ object Mapnik2GeoTools {
         if (path.isDefined) {
           <Graphic>
             <ExternalGraphic>
-              <OnlineResource xlink:href={path.get}/>
+              <OnlineResource xlink:href={new java.net.URL(gsDataDir, path.get).toString}/>
               <Format>{ format }</Format>
             </ExternalGraphic>
           </Graphic>
@@ -61,34 +63,39 @@ object Mapnik2GeoTools {
             <Font>
               <CssParameter name="font-family">SansSerif</CssParameter>
               <CssParameter name="font-size"> { attmap("size") }</CssParameter>
-              <CssParameter name="font-style">bold</CssParameter>
+              <CssParameter name="font-weight">bold</CssParameter>
             </Font>
         }
 
         <LabelPlacement>
-          <PointPlacement>
-            <AnchorPoint>
-              <AnchorPointX>
-                <ogc:Literal>0.5</ogc:Literal>
-              </AnchorPointX>
-              <AnchorPointY>
-                <ogc:Literal>0.5</ogc:Literal>
-              </AnchorPointY>
-            </AnchorPoint>
-            { if ((attmap contains "dx") && (attmap contains "dy"))
-              <Displacement>
-                <DisplacementX>
-                  <ogc:Literal>{ attmap("dx") }</ogc:Literal>
-                </DisplacementX>
-                <DisplacementY>
-                  <ogc:Literal>{ attmap("dy") }</ogc:Literal>
-                </DisplacementY>
-              </Displacement>
-            }
-            <Rotation>
-              <ogc:Literal>0</ogc:Literal>
-            </Rotation>
-          </PointPlacement>
+        { if (attmap.get("placement") == Some("line"))
+            <LinePlacement/>
+        } 
+        { if (attmap.get("placement") == None)
+            <PointPlacement>
+              <AnchorPoint>
+                <AnchorPointX>
+                  <ogc:Literal>0.5</ogc:Literal>
+                </AnchorPointX>
+                <AnchorPointY>
+                  <ogc:Literal>0.5</ogc:Literal>
+                </AnchorPointY>
+              </AnchorPoint>
+              { if ((attmap contains "dx") && (attmap contains "dy"))
+                <Displacement>
+                  <DisplacementX>
+                    <ogc:Literal>{ attmap("dx") }</ogc:Literal>
+                  </DisplacementX>
+                  <DisplacementY>
+                    <ogc:Literal>{ attmap("dy") }</ogc:Literal>
+                  </DisplacementY>
+                </Displacement>
+              }
+              <Rotation>
+                <ogc:Literal>0</ogc:Literal>
+              </Rotation>
+            </PointPlacement>
+        }
         </LabelPlacement>
 
         { if (attmap contains "halo_fill") {
@@ -110,8 +117,12 @@ object Mapnik2GeoTools {
 
         { if (attmap contains "fill")
             <Fill>
-              <CssParameter name="fill">{attmap("fill") }</CssParameter>
+              <CssParameter name="fill">{ attmap("fill") }</CssParameter>
             </Fill>
+        }
+
+        { if (attmap.get("placement") == Some("line"))
+            <VendorOption name="followLine">true</VendorOption>
         }
 
         { Comment(attmap.toString) }
@@ -123,12 +134,12 @@ object Mapnik2GeoTools {
 
       <TextSymbolizer>
         { if (attmap contains "name")
-            <Label>{ attmap("name") }</Label>
+            <Label><ogc:PropertyName>{ attmap("name") }</ogc:PropertyName></Label>
         }
         <Font>
           <CssParameter name="font-family">SansSerif</CssParameter>
           { if (attmap("fontset_name") == Some("bold-fonts"))
-              <CssParameter name="font-style">bold</CssParameter>
+              <CssParameter name="font-weight">bold</CssParameter>
           }
           { if (attmap contains "size")
               <CssParameter name="font-size">{ attmap("size") }</CssParameter>
@@ -163,6 +174,23 @@ object Mapnik2GeoTools {
         </Halo>
         <Fill>
         </Fill>
+        <Graphic>
+          <ExternalGraphic>
+            <OnlineResource xlink:href={new java.net.URL(gsDataDir, attmap("file")).toString}/>
+            <Format>{ 
+              attmap.getOrElse("type", "image/png") match {
+                case "png" => "image/png"
+                case "jpeg" => "image/jpeg"
+                case "gif" => "image/gif"
+                case other => other
+              }
+            }</Format>
+            { if (attmap contains "height")
+                <Size>{ attmap("height") }</Size>
+            }
+          </ExternalGraphic>
+        </Graphic>
+
       </TextSymbolizer>
     }
 
@@ -202,7 +230,7 @@ object Mapnik2GeoTools {
           <GraphicFill>
             <Graphic>
               <ExternalGraphic>
-                <OnlineResource xlink:href={ attrs("file") }/>
+                <OnlineResource xlink:href={new java.net.URL(gsDataDir, attrs("file")).toString}/>
                 <Format>{ format }</Format>
               </ExternalGraphic>
               <Size>{ attrs("height") }</Size>
@@ -245,6 +273,10 @@ object Mapnik2GeoTools {
           val child = ordered ++ (rule.child diff ordered)
 
           rule.copy(child = child)
+        case param: Elem if param.label == "CssParameter" 
+          && param.attributes.asAttrMap.get("name") == Some("stroke-dasharray")
+          =>
+          param.copy(child = Text(param.text.replaceAll(",", " ")))
         case n => n
       }
   }
@@ -353,7 +385,9 @@ object Mapnik2GeoTools {
     for (arg <- args) {
       val source = new java.io.File(arg)
       val outdir = new java.io.File(source.getParent(), "output")
-      val sink: Output = new FileSystem(outdir)
+      val sink: Output = 
+        new GeoServer("http://localhost:8080/geoserver/rest", ("admin", "geoserver"))
+        // new FileSystem(outdir)
 
       val doc = convert(XML.loadFile(source))
       for (style <- doc \\ "Style") sink.writeStyle(style)
