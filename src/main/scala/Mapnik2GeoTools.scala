@@ -122,7 +122,7 @@ object Mapnik2GeoTools {
       val attmap = shield.attributes.asAttrMap
 
       <TextSymbolizer>
-        { if (attmap contains "name") 
+        { if (attmap contains "name")
             <Label>{ attmap("name") }</Label>
         }
         <Font>
@@ -374,7 +374,7 @@ object Mapnik2GeoTools {
     val selectPattern = """(?si:\(SELECT\s+(.*)\)\s+AS)""".r
 
     for (layer <- layers if params(layer \ "Datasource") contains "table") {
-      val name = layer.attributes.asAttrMap("name")
+      val name = layer.attributes.asAttrMap("name").replaceAll("[-\\s]", "_")
       val table = params(layer \ "Datasource")("table")
 
       val select =
@@ -384,8 +384,7 @@ object Mapnik2GeoTools {
 
       val wrapper =
         """
-        CREATE OR REPLACE VIEW """ + name + """ AS """ + select + """;
-        SELECT AddGeometryColumn('','""" + name + """','way',900913,'LINESTRING',2);
+        CREATE OR REPLACE VIEW """ + name + """ AS SELECT """ + select + """;
         """
 
       writer.write(wrapper)
@@ -395,7 +394,7 @@ object Mapnik2GeoTools {
   }
 
   def main(args: Array[String]) {
-    val convert = 
+    val convert =
       new RuleTransformer(
         FilterTransformer,
         PointSymTransformer,
