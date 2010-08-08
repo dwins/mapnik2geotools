@@ -62,35 +62,10 @@ class GeoServer(base: String, auth: (String, String)) extends Mapnik2GeoTools.Ou
     }
   }
 
-  def createDataStore(user: String, host: String, port: String, database: String): Int = {
-    val message = 
-      <dataStore>
-        <name>{ database }</name>
-        <description>Auto-loaded datastore from Mapnik style</description>
-        <type>PostGIS</type>
-        <enabled>true</enabled>
-        <workspace><name>osm</name></workspace>
-        <connectionParameters>
-          <entry key="user">{ user }</entry>
-          <entry key="host">{ host }</entry>
-          <entry key="port">{ port }</entry>
-          <entry key="database">{ database }</entry>
-          <entry key="namespace">http://mercury/osm/</entry> 
-          <entry key="dbtype">postgis</entry>
-          <entry key="Connection timeout">20</entry> 
-          <entry key="validate connections">false</entry> 
-          <entry key="max connections">10</entry> 
-          <entry key="schema">public</entry> 
-          <entry key="Loose bbox">true</entry> 
-          <entry key="Expose primary keys">false</entry> 
-          <entry key="fetch size">1000</entry> 
-          <entry key="Max open prepared statements">50</entry> 
-          <entry key="preparedStatements">false</entry> 
-          <entry key="min connections">1</entry> 
-        </connectionParameters>
-      </dataStore>
-    
-    val url = base + "/workspaces/osm/datastores/?name=" + database
+  def createDataStore(store: Store): Int = {
+    val message = store.toXML
+
+    val url = base + "/workspaces/osm/datastores/?name=" + store.name
     val post =
       new httpclient.methods.PostMethod(url)
     post.setRequestEntity(
@@ -101,13 +76,14 @@ class GeoServer(base: String, auth: (String, String)) extends Mapnik2GeoTools.Ou
     val status = client.executeMethod(post)
     val in =
       io.Source.fromInputStream(post.getResponseBodyAsStream()).mkString
+    if (!(200 to 299 contains status)) println(url + ": (" + status + ") " + in)
     post.releaseConnection()
     status
   }
 
   def createFeatureType(name: String, datastore: String, table: String) {
     val cleanedName = name.replaceAll("[\\s-]", "_")
-    val message = 
+    val message =
       <featureType>
         <name>{ cleanedName }</name>
         <nativeName>{ cleanedName }</nativeName>
@@ -117,7 +93,7 @@ class GeoServer(base: String, auth: (String, String)) extends Mapnik2GeoTools.Ou
         <title>name</title>
         <srs>EPSG:900913</srs>
         <enabled>true</enabled>
-        <store class="dataStore"><name>osm_cpk</name></store>
+        <store class="dataStore"><name>{ datastore }</name></store>
       </featureType>
 
     val url = base + "/workspaces/osm/datastores/" + datastore + "/featuretypes/?name=" + cleanedName
@@ -131,21 +107,21 @@ class GeoServer(base: String, auth: (String, String)) extends Mapnik2GeoTools.Ou
     val status = client.executeMethod(post)
     val in =
       io.Source.fromInputStream(post.getResponseBodyAsStream()).mkString
-    if (!(200 to 299 contains status)) println(cleanedName + ": " + in)
+    if (!(200 to 299 contains status)) println(url + ": (" + status + ") " + in)
     post.releaseConnection()
     status
   }
 
   def attachStyles(typename: String, styles: Seq[String]): Int = {
-    val message = 
-      <layer> 
-        <name>{ typename }</name> 
-        <type>VECTOR</type> 
-        <styles> 
+    val message =
+      <layer>
+        <name>{ typename }</name>
+        <type>VECTOR</type>
+        <styles>
           { for (s <- styles) yield <style><name>{s}</name></style> }
         </styles>
-        <resource class="featureType"><name>{ typename }</name></resource> 
-        <enabled>true</enabled> 
+        <resource class="featureType"><name>{ typename }</name></resource>
+        <enabled>true</enabled>
       </layer>
 
     val url = base + "/layers/" + typename
@@ -159,16 +135,16 @@ class GeoServer(base: String, auth: (String, String)) extends Mapnik2GeoTools.Ou
     val status = client.executeMethod(put)
     val in =
       io.Source.fromInputStream(put.getResponseBodyAsStream()).mkString
-    if (!(200 to 299 contains status)) println(typename + ": " + in)
+    if (!(200 to 299 contains status)) println(url + ": " + in)
     put.releaseConnection()
     status
   }
 
   def createLayerGroup(layers: Seq[(String, Seq[String])]): Int = {
-    val message = 
+    val message =
       <layerGroup>
         <name>osm</name> <layers>
-          { for ((layer, styles) <- layers; _ <- styles) 
+          { for ((layer, styles) <- layers; _ <- styles)
             yield <layer><name>{layer}</name></layer>
           }
         </layers>
@@ -177,18 +153,18 @@ class GeoServer(base: String, auth: (String, String)) extends Mapnik2GeoTools.Ou
             yield <style><name>{ style }</name></style>
           }
         </styles>
-        <bounds> 
-          <minx>-8508704.72</minx> 
-          <maxx>-8457610.3</maxx> 
-          <miny>4394180.29</miny> 
-          <maxy>4432833.99</maxy> 
-          <crs class="projected">EPSG:900913</crs> 
-        </bounds> 
+        <bounds>
+          <minx>-8508704.72</minx>
+          <maxx>-8457610.3</maxx>
+          <miny>4394180.29</miny>
+          <maxy>4432833.99</maxy>
+          <crs class="projected">EPSG:900913</crs>
+        </bounds>
       </layerGroup>
 
-    val url = base + "/layergroups/osm.xml"
+    val url = base + "/layergroups/"// osm.xml"
     val put =
-      new httpclient.methods.PutMethod(url)
+      new httpclient.methods.PostMethod(url)
     put.setRequestEntity(
       new httpclient.methods.StringRequestEntity(
         message.toString, "application/xml", "utf-8"
@@ -225,6 +201,72 @@ class GeoServer(base: String, auth: (String, String)) extends Mapnik2GeoTools.Ou
     setStyle(normalizeStyleName(name), wrapper)
   }
 
+  trait Store {
+    def name: String
+    def toXML: Node
+  }
+
+  case class PostgisStore(
+    user: String,
+    host: String,
+    port: String,
+    database: String
+  ) extends Store {
+    val name = database.replaceAll("[\\s-]", "_")
+    val toXML =
+      <dataStore>
+        <name>{ database }</name>
+        <description>Auto-loaded datastore from Mapnik style</description>
+        <type>PostGIS</type>
+        <enabled>true</enabled>
+        <workspace><name>osm</name></workspace>
+        <connectionParameters>
+          <entry key="user">{ user }</entry>
+          <entry key="host">{ host }</entry>
+          <entry key="port">{ port }</entry>
+          <entry key="database">{ database }</entry>
+          <entry key="namespace">http://mercury/osm/</entry>
+          <entry key="dbtype">postgis</entry>
+          <entry key="Connection timeout">20</entry>
+          <entry key="validate connections">false</entry>
+          <entry key="max connections">10</entry>
+          <entry key="schema">public</entry>
+          <entry key="Loose bbox">true</entry>
+          <entry key="Expose primary keys">false</entry>
+          <entry key="fetch size">1000</entry>
+          <entry key="Max open prepared statements">50</entry>
+          <entry key="preparedStatements">false</entry>
+          <entry key="min connections">1</entry>
+        </connectionParameters>
+      </dataStore>
+  }
+
+  case class ShapefileStore(
+    file: String
+  ) extends Store {
+    val name = file
+        .drop(file.lastIndexOf("/") + 1)
+        .replaceAll("[\\s-]", "_")
+
+    val toXML =
+      <dataStore>
+        <name>{ name }</name>
+        <type>Shapefile</type>
+        <enabled>true</enabled>
+        <workspace>
+          <name>osm</name>
+        </workspace>
+        <connectionParameters>
+          <entry key="memory mapped buffer">true</entry>
+          <entry key="create spatial index">true</entry>
+          <entry key="charset">ISO-8859-1</entry>
+          <entry key="filetype">shapefile</entry>
+          <entry key="url">{ "file:data/" + file + ".shp" }</entry>
+          <entry key="namespace">http://mercury/osm/</entry>
+        </connectionParameters>
+      </dataStore>
+  }
+
   def writeLayers(layers: NodeSeq) {
     def params(datastore: NodeSeq): Map[String, String] =
       datastore \ "Parameter" map {
@@ -237,32 +279,43 @@ class GeoServer(base: String, auth: (String, String)) extends Mapnik2GeoTools.Ou
       for {
         layer <- layers
         settings = params(layer \ "Datasource")
-        if settings contains "table"
+        storeType <- settings.get("type").filter(Set("shape","postgis").contains)
       } yield {
-        val db = (settings("user"), settings("host"), settings("port"), settings("dbname"))
+        val (datastore, table) =
+          storeType match {
+            case "shape" =>
+              val store = ShapefileStore(settings("file"))
+              (store, store.name)
+            case "postgis" =>
+              val store =
+                PostgisStore(settings("user"), settings("host"), settings("port"), settings("dbname"))
+              (store, settings("table"))
+          }
+
         val name = layer.attributes.asAttrMap("name")
-        val table = settings("table")
         val styles = layer \ "StyleName" map(s => normalizeStyleName(s.text))
-        (name, db, table, styles)
+
+        (name, datastore, table, styles)
       }
 
     val databases = datalayers map(_._2) distinct
 
-    for ((user, host, port, database) <- databases)
-      createDataStore(user, host, port, database)
+    for (store <- databases) createDataStore(store)
 
-    for ((name, db, table, styles) <- datalayers) {
-      if (selectPattern.findFirstMatchIn(table) isDefined)
-        createFeatureType(name, db._4, name)
-      else {
-        createFeatureType(name, db._4, table)
-      }
-      attachStyles(name.replaceAll("[\\s-]", "_"), styles)
+    def id(store: (String, _, String, _)): String =
+      if (selectPattern.findFirstMatchIn(store._3).isDefined)
+        store._1
+      else
+        store._3
+
+    for (store@(name, ds, table, styles) <- datalayers) {
+      createFeatureType(id(store), ds.name, name)
+      attachStyles(id(store).replaceAll("[\\s-]", "_"), styles)
     }
 
     createLayerGroup(datalayers map {
       x => (
-        x._1.replaceAll("[\\s-]", "_"), 
+        id(x).replaceAll("[\\s-]", "_"),
         x._4.map(normalizeStyleName)
       )
     })

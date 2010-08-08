@@ -35,7 +35,16 @@ object Mapnik2GeoTools {
       }
   }
 
-  object TextSymTransformer extends RewriteRule {
+  class TextSymTransformer(fontsets: NodeSeq) extends RewriteRule {
+    val fonts: Map[String, Seq[String]] =
+      (
+        for {
+          fset <- fontsets
+          name = fset.attributes.asAttrMap("name")
+          faces = fset \ "Font" \ "@face_name" map(_.text)
+        } yield { name -> faces }
+      ) toMap
+
     def convertTextSymbolizer(text: Elem): Node = {
       val attmap = text.attributes.asAttrMap
 
@@ -52,26 +61,19 @@ object Mapnik2GeoTools {
           </Label>
         }
 
-        { if (attmap.get("fontset_name") == Some("oblique-fonts"))
-            <Font>
-              <CssParameter name="font-family">SansSerif</CssParameter>
+        <Font>
+          { if (attmap.contains("fontset_name") && fonts.contains(attmap("fontset_name")))
+              { for (face <- fonts(attmap("fontset_name")))
+                yield <CssParameter name="font-family">face</CssParameter>
+              }
               <CssParameter name="font-size">{ attmap("size") }</CssParameter>
-            </Font>
-        }
-
-        { if (attmap.get("fontset_name") == Some("bold-fonts"))
-            <Font>
-              <CssParameter name="font-family">SansSerif</CssParameter>
-              <CssParameter name="font-size"> { attmap("size") }</CssParameter>
-              <CssParameter name="font-weight">bold</CssParameter>
-            </Font>
-        }
+          }
+        </Font>
 
         <LabelPlacement>
         { if (attmap.get("placement") == Some("line"))
             <LinePlacement/>
-        } 
-        { if (attmap.get("placement") == None)
+          else
             <PointPlacement>
               <AnchorPoint>
                 <AnchorPointX>
@@ -373,15 +375,6 @@ object Mapnik2GeoTools {
   }
 
   def main(args: Array[String]) {
-    val convert =
-      new RuleTransformer(
-        FilterTransformer,
-        PointSymTransformer,
-        LineSymTransformer,
-        PolygonSymTransformer,
-        TextSymTransformer,
-        RuleCleanup
-      )
     for (arg <- args) {
       val source = new java.io.File(arg)
       val outdir = new java.io.File(source.getParent(), "output")
@@ -389,6 +382,16 @@ object Mapnik2GeoTools {
         new GeoServer("http://localhost:8080/geoserver/rest", ("admin", "geoserver"))
         // new FileSystem(outdir)
 
+      val original = XML.loadFile(source)
+      val convert =
+        new RuleTransformer(
+          FilterTransformer,
+          PointSymTransformer,
+          LineSymTransformer,
+          PolygonSymTransformer,
+          new TextSymTransformer(original \\ "FontSet"),
+          RuleCleanup
+        )
       val doc = convert(XML.loadFile(source))
       for (style <- doc \\ "Style") sink.writeStyle(style)
       sink.writeLayers(doc \\ "Layer")
