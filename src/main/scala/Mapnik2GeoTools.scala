@@ -62,7 +62,7 @@ object Mapnik2GeoTools {
         }
 
         <Font>
-          { if (attmap.contains("fontset_name") && fonts.contains(attmap("fontset_name"))) 
+          { if (attmap.contains("fontset_name") && fonts.contains(attmap("fontset_name")))
               { for (face <- fonts(attmap("fontset_name")))
                 yield <CssParameter name="font-family">{ face }</CssParameter>
               } flatten
@@ -124,13 +124,21 @@ object Mapnik2GeoTools {
         }
 
         <Fill>
-          <CssParameter name="fill">{ 
-            attmap.getOrElse("fill", "#000000") 
+          <CssParameter name="fill">{
+            attmap.getOrElse("fill", "#000000")
           }</CssParameter>
         </Fill>
 
         { if (attmap.get("placement") == Some("line"))
             <VendorOption name="followLine">true</VendorOption>
+        }
+
+        { if (attmap contains "min_distance")
+            <VendorOption name="spaceAround">{ attmap("min_distance") }</VendorOption>
+        }
+
+        { if (attmap contains "spacing")
+            <VendorOption name="minGroupDistance">{ attmap("spacing") }</VendorOption>
         }
 
         { Comment(attmap.toString) }
@@ -178,14 +186,24 @@ object Mapnik2GeoTools {
             </Rotation>
           </PointPlacement>
         </LabelPlacement>
-        <Halo>
-        </Halo>
         <Fill>
+          {
+            attmap.get("fill") match {
+              case Some(hex) if hex.startsWith("#") && hex.length == 7
+                => <CssParameter name="fill">{ hex }</CssParameter>
+              case Some(hex) if hex.startsWith("#") && hex.length == 4
+                => <CssParameter name="fill">{
+                    "#" + hex.tail.flatMap(c => c.toString * 2)
+                   }</CssParameter>
+              case _
+                => <CssParameter name="fill">#000000</CssParameter>
+            }
+          }
         </Fill>
         <Graphic>
           <ExternalGraphic>
             <OnlineResource xlink:href={new java.net.URL(gsDataDir, attmap("file")).toString}/>
-            <Format>{ 
+            <Format>{
               attmap.getOrElse("type", "image/png") match {
                 case "png" => "image/png"
                 case "jpeg" => "image/jpeg"
@@ -198,6 +216,14 @@ object Mapnik2GeoTools {
             }
           </ExternalGraphic>
         </Graphic>
+
+        { if (attmap contains "min_distance")
+            <VendorOption name="spaceAround">{ attmap("min_distance") }</VendorOption>
+        }
+
+        { if (attmap contains "spacing")
+            <VendorOption name="minGroupDistance">{ attmap("spacing") }</VendorOption>
+        }
 
       </TextSymbolizer>
     }
@@ -281,7 +307,7 @@ object Mapnik2GeoTools {
           val child = ordered ++ (rule.child diff ordered)
 
           rule.copy(child = child)
-        case param: Elem if param.label == "CssParameter" 
+        case param: Elem if param.label == "CssParameter"
           && param.attributes.asAttrMap.get("name") == Some("stroke-dasharray")
           =>
           param.copy(child = Text(param.text.replaceAll(",", " ")))
@@ -395,7 +421,7 @@ object Mapnik2GeoTools {
     for (arg <- args) {
       val source = new java.io.File(arg)
       val outdir = new java.io.File(source.getParent(), "output")
-      val sink: Output = 
+      val sink: Output =
         new GeoServer("http://localhost:8080/geoserver/rest", ("admin", "geoserver"))
         // new FileSystem(outdir)
 
