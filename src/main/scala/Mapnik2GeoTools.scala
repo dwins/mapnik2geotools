@@ -41,7 +41,7 @@ object Mapnik2GeoTools {
         for {
           fset <- fontsets
           name = fset.attributes.asAttrMap("name")
-          faces = fset \ "Font" \ "@face_name" map(_.text)
+          faces = fset \\ "@face_name" map(_.text)
         } yield { name -> faces }
       ) toMap
 
@@ -62,11 +62,17 @@ object Mapnik2GeoTools {
         }
 
         <Font>
-          { if (attmap.contains("fontset_name") && fonts.contains(attmap("fontset_name")))
+          { if (attmap.contains("fontset_name") && fonts.contains(attmap("fontset_name"))) 
               { for (face <- fonts(attmap("fontset_name")))
-                yield <CssParameter name="font-family">face</CssParameter>
-              }
-              <CssParameter name="font-size">{ attmap("size") }</CssParameter>
+                yield <CssParameter name="font-family">{ face }</CssParameter>
+              } flatten
+          }
+          <CssParameter name="font-size">{ attmap("size") }</CssParameter>
+          { if (attmap("fontset_name") contains "bold")
+              <CssParameter name="font-weight">bold</CssParameter>
+          }
+          { if (attmap("fontset_name") contains "oblique")
+              <CssParameter name="font-style">italic</CssParameter>
           }
         </Font>
 
@@ -117,11 +123,11 @@ object Mapnik2GeoTools {
           }
         }
 
-        { if (attmap contains "fill")
-            <Fill>
-              <CssParameter name="fill">{ attmap("fill") }</CssParameter>
-            </Fill>
-        }
+        <Fill>
+          <CssParameter name="fill">{ 
+            attmap.getOrElse("fill", "#000000") 
+          }</CssParameter>
+        </Fill>
 
         { if (attmap.get("placement") == Some("line"))
             <VendorOption name="followLine">true</VendorOption>
@@ -315,10 +321,21 @@ object Mapnik2GeoTools {
         <PropertyIsLessThan>{a}{b}</PropertyIsLessThan>
       }
 
+    def rewriteRegex(e: xml.Elem): xml.Elem =
+      if (e.label == "PropertyName")
+        e
+      else
+        e.copy(child=Text(
+          e.text
+           .replaceAll("\\.\\*", "%")
+           .replaceAll("\\.", "_")
+           .replaceAll("^\\^", "")
+        ))
+
     val like =
       (property <~ ("." ~ "match" ~ "(")) ~ (value <~ ")") map { case a ~ b =>
         <PropertyIsLike wildCard="%" singleChar="_" escape="\">
-          {a}{b}
+          {a}{rewriteRegex(b)}
         </PropertyIsLike>
       }
 
