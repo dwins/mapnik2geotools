@@ -19,97 +19,117 @@ class GeoServer(base: String, auth: (String, String)) extends Mapnik2GeoTools.Ou
 
   def normalizeStyleName(name: String) = name.replaceAll("\\s+", "-")
 
-  def addStyle(name: String, style: Node): Int = {
-    val url = base + "/styles?name=" + encode(name, "UTF-8")
-    val post =
-      new httpclient.methods.PostMethod(url)
-    post.setRequestEntity(
+  def post(url: String, message: Node, mime: String = "application/xml")
+  : Int = {
+    val request = new httpclient.methods.PostMethod(url)
+    request.setRequestEntity(
       new httpclient.methods.StringRequestEntity(
-        style.toString, "application/vnd.ogc.sld+xml", "utf-8"
+        message.toString, mime, "utf-8"
       )
     )
-    val status = client.executeMethod(post)
-    val in =
-      io.Source.fromInputStream(post.getResponseBodyAsStream()).mkString
-    if (!(200 to 299 contains status)) println(url + ": " + in)
-    post.releaseConnection()
+    val status = client.executeMethod(request)
+    if (!(200 to 299 contains status)) {
+      val body =
+        io.Source.fromInputStream(request.getResponseBodyAsStream()).mkString
+      println("%s: (%d) %s".format(url, status, body))
+    }
     status
   }
 
-  def updateStyle(name: String, style: Node): Int = {
-    val url = "%s/styles/%s.sld".format(base, name)
-    val put =
-      new httpclient.methods.PutMethod(url)
-    put.setRequestEntity(
+  def put(url: String, message: Node, mime: String = "application/xml")
+  : Int = {
+    val request = new httpclient.methods.PutMethod(url)
+    request.setRequestEntity(
       new httpclient.methods.StringRequestEntity(
-        style.toString, "application/vnd.ogc.sld+xml", "utf-8"
+        message.toString, mime, "utf-8"
       )
     )
-    val status = client.executeMethod(put)
-    val in =
-      io.Source.fromInputStream(put.getResponseBodyAsStream()).mkString
-    if (!(200 to 299 contains status)) println(url + ": " + in)
-    put.releaseConnection()
+    val status = client.executeMethod(request)
+    if (!(200 to 299 contains status)) {
+      val body =
+        io.Source.fromInputStream(request.getResponseBodyAsStream()).mkString
+      println("%s: (%d) %s".format(url, status, body))
+    }
     status
   }
+
+  def addStyle(name: String, style: Node): Int =
+    post(
+      base + "/styles?name=" + encode(name, "UTF-8"),
+      style, 
+      "application/vnd.ogc.sld+xml"
+    )
+
+  def updateStyle(name: String, style: Node): Int =
+    put(
+      base + "/styles/" + name + ".sld",
+      style,
+      "application/vnd.ogc.sld+xml"
+    )
 
   def setStyle(name: String, style: Node): Int = {
     val status = updateStyle(name, style)
-    if ((400 until 500) contains status) {
+    if (400 to 499 contains status) {
       addStyle(name, style)
     } else {
       status
     }
   }
 
-  def createDataStore(store: Store): Int = {
-    val message = store.toXML
-
-    val url = base + "/workspaces/osm/datastores/?name=" + store.name
-    val post =
-      new httpclient.methods.PostMethod(url)
-    post.setRequestEntity(
-      new httpclient.methods.StringRequestEntity(
-        message.toString, "application/xml", "utf-8"
-      )
+  def addDataStore(store: Store): Int =
+    post(
+      base + "/workspaces/osm/datastores/",
+      store.toXML
     )
-    val status = client.executeMethod(post)
-    val in =
-      io.Source.fromInputStream(post.getResponseBodyAsStream()).mkString
-    if (!(200 to 299 contains status)) println(url + ": (" + status + ") " + in)
-    post.releaseConnection()
-    status
+
+  def updateDataStore(store: Store): Int = 
+    put(
+      base + "/workspaces/osm/datastores/" + store.name,
+      store.toXML
+    )
+
+  def setDataStore(store: Store): Int = {
+    val status = updateDataStore(store)
+    if (400 to 499 contains status) {
+      addDataStore(store)
+    } else {
+      status
+    }
   }
 
-  def createFeatureType(name: String, datastore: String, table: String) {
-    val cleanedName = name.replaceAll("[\\s-]", "_")
-    val message =
-      <featureType>
-        <name>{ cleanedName }</name>
-        <nativeName>{ cleanedName }</nativeName>
-        <namespace>
-          <name>osm</name>
-        </namespace>
-        <title>name</title>
-        <srs>EPSG:900913</srs>
-        <enabled>true</enabled>
-        <store class="dataStore"><name>{ datastore }</name></store>
-      </featureType>
+  def featureTypeXML(name: String, datastore: String, table: String): Node =
+    <featureType>
+      <name>{ name.replaceAll("[\\s-]", "_") }</name>
+      <nativeName>{ name.replaceAll("[\\s-]", "_") }</nativeName>
+      <namespace>
+        <name>osm</name>
+      </namespace>
+      <title>name</title>
+      <srs>EPSG:900913</srs>
+      <enabled>true</enabled>
+      <store class="dataStore"><name>{ datastore }</name></store>
+    </featureType>
 
-    val url = base + "/workspaces/osm/datastores/" + datastore + "/featuretypes/?name=" + cleanedName
-    val post =
-      new httpclient.methods.PostMethod(url)
-    post.setRequestEntity(
-      new httpclient.methods.StringRequestEntity(
-        message.toString, "application/xml", "utf-8"
-      )
+  def addFeatureType(name: String, datastore: String, table: String): Int =
+    post(
+      "%s/workspaces/osm/datastores/%s/featuretypes/".format(base, datastore),
+      featureTypeXML(name, datastore, table)
     )
-    val status = client.executeMethod(post)
-    val in =
-      io.Source.fromInputStream(post.getResponseBodyAsStream()).mkString
-    if (!(200 to 299 contains status)) println(url + ": (" + status + ") " + in)
-    post.releaseConnection()
-    status
+
+  def updateFeatureType(name: String, datastore: String, table: String): Int =
+    put(
+      "%s/workspaces/osm/datastores/%s/featuretypes/%s.xml"
+        .format(base, datastore, name),
+      featureTypeXML(name, datastore, table)
+    )
+
+  def setFeatureType(name: String, datastore: String, table: String): Int = {
+    val status = updateFeatureType(name, datastore, table)
+    if (400 to 499 contains status) {
+      addFeatureType(name, datastore, table)
+    } else {
+      status
+    }
   }
 
   def attachStyles(typename: String, styles: Seq[String]): Int = {
@@ -124,58 +144,45 @@ class GeoServer(base: String, auth: (String, String)) extends Mapnik2GeoTools.Ou
         <enabled>true</enabled>
       </layer>
 
-    val url = base + "/layers/" + typename
-    val put =
-      new httpclient.methods.PutMethod(url)
-    put.setRequestEntity(
-      new httpclient.methods.StringRequestEntity(
-        message.toString, "application/xml", "utf-8"
-      )
-    )
-    val status = client.executeMethod(put)
-    val in =
-      io.Source.fromInputStream(put.getResponseBodyAsStream()).mkString
-    if (!(200 to 299 contains status)) println(url + ": " + in)
-    put.releaseConnection()
-    status
+    put(base + "/layers/" + typename, message)
   }
 
-  def createLayerGroup(layers: Seq[(String, Seq[String])]): Int = {
-    val message =
-      <layerGroup>
-        <name>osm</name> <layers>
-          { for ((layer, styles) <- layers; _ <- styles)
-            yield <layer><name>{layer}</name></layer>
-          }
-        </layers>
-        <styles>
-          { for ((_, styles) <- layers; style <- styles)
-            yield <style><name>{ style }</name></style>
-          }
-        </styles>
-        <bounds>
-          <minx>-8508704.72</minx>
-          <maxx>-8457610.3</maxx>
-          <miny>4394180.29</miny>
-          <maxy>4432833.99</maxy>
-          <crs class="projected">EPSG:900913</crs>
-        </bounds>
-      </layerGroup>
+  def layerGroupXML(layers: Seq[(String, Seq[String])]) =
+    <layerGroup>
+      <name>osm</name>
+      <layers>
+        {
+          for ((layer, styles) <- layers; _ <- styles)
+          yield <layer><name>{ layer }</name></layer>
+        }
+      </layers>
+      <styles>
+        {
+          for ((_, styles) <- layers; style <- styles)
+          yield <style><name>{ style }</name></style>
+        }
+      </styles>
+    </layerGroup>
 
-    val url = base + "/layergroups/"// osm.xml"
-    val put =
-      new httpclient.methods.PostMethod(url)
-    put.setRequestEntity(
-      new httpclient.methods.StringRequestEntity(
-        message.toString, "application/xml", "utf-8"
-      )
+  def addLayerGroup(layers: Seq[(String, Seq[String])]): Int =
+    post(
+      base + "/layergroups/",
+      layerGroupXML(layers)
     )
-    val status = client.executeMethod(put)
-    val in =
-      io.Source.fromInputStream(put.getResponseBodyAsStream()).mkString
-    println(url + ": (" + status + ") " + in)
-    put.releaseConnection()
-    status
+
+  def updateLayerGroup(layers: Seq[(String, Seq[String])]): Int = 
+    put(
+      base + "/layergroups/osm.xml",
+      layerGroupXML(layers)
+    )
+
+  def setLayerGroup(layers: Seq[(String, Seq[String])]): Int = {
+    val status = updateLayerGroup(layers)
+    if (400 to 499 contains status) {
+      addLayerGroup(layers)
+    } else {
+      status
+    }
   }
 
   def writeStyle(style: Node) {
@@ -279,7 +286,8 @@ class GeoServer(base: String, auth: (String, String)) extends Mapnik2GeoTools.Ou
       for {
         layer <- layers
         settings = params(layer \ "Datasource")
-        storeType <- settings.get("type").filter(Set("shape","postgis").contains)
+        storeType <- settings.get("type")
+        if Set("shape","postgis") contains storeType
       } yield {
         val (datastore, table) =
           storeType match {
@@ -288,32 +296,45 @@ class GeoServer(base: String, auth: (String, String)) extends Mapnik2GeoTools.Ou
               (store, store.name)
             case "postgis" =>
               val store =
-                PostgisStore(settings("user"), settings("host"), settings("port"), settings("dbname"))
-              (store, settings("table"))
+                PostgisStore(
+                  settings("user"),
+                  settings("host"),
+                  settings("port"),
+                  settings("dbname")
+                )
+
+              val table =
+                if (selectPattern.findFirstMatchIn(settings("table")).isDefined)
+                  layer.attributes.asAttrMap("name")
+                else
+                  settings("table")
+
+              (store, table)
           }
 
         val name = layer.attributes.asAttrMap("name")
         val styles = layer \ "StyleName" map(s => normalizeStyleName(s.text))
 
-        (name, datastore, table, styles)
+        (table.replaceAll("[\\s-]", "_"), datastore, table, styles)
       }
 
     val databases = datalayers map(_._2) distinct
 
-    for (store <- databases) createDataStore(store)
+    for (store <- databases) setDataStore(store)
 
+    // OMG HACKS XXX
     def id(store: (String, _, String, _)): String =
-      if (selectPattern.findFirstMatchIn(store._3).isDefined)
+      //if (selectPattern.findFirstMatchIn(store._3).isDefined)
         store._1
-      else
-        store._3
+      //else
+      //  store._3
 
     for (store@(name, ds, table, styles) <- datalayers) {
-      createFeatureType(id(store), ds.name, name)
+      setFeatureType(id(store), ds.name, name)
       attachStyles(id(store).replaceAll("[\\s-]", "_"), styles)
     }
 
-    createLayerGroup(datalayers map {
+    setLayerGroup(datalayers map {
       x => (
         id(x).replaceAll("[\\s-]", "_"),
         x._4.map(normalizeStyleName)
