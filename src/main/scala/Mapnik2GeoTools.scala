@@ -416,28 +416,4 @@ object Mapnik2GeoTools {
     def writeStyle(style: Node): Unit
     def writeLayers(layers: NodeSeq): Unit
   }
-
-  def main(args: Array[String]) {
-    for (arg <- args) {
-      val source = new java.io.File(arg)
-      val outdir = new java.io.File(source.getParent(), "output")
-      val sink: Output =
-        new GeoServer("http://localhost:8080/geoserver/rest", ("admin", "geoserver"))
-        // new FileSystem(outdir)
-
-      val original = XML.loadFile(source)
-      val convert =
-        new RuleTransformer(
-          FilterTransformer,
-          PointSymTransformer,
-          LineSymTransformer,
-          PolygonSymTransformer,
-          new TextSymTransformer(original \\ "FontSet"),
-          RuleCleanup
-        )
-      val doc = convert(XML.loadFile(source))
-      for (style <- doc \\ "Style") sink.writeStyle(style)
-      sink.writeLayers(doc \\ "Layer")
-    }
-  }
 }

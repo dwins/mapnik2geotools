@@ -2,13 +2,14 @@ import xml._
 import java.net.URLEncoder.encode
 import org.apache.commons.httpclient
 
-class GeoServer(base: String, auth: (String, String)) extends Mapnik2GeoTools.Output {
+class GeoServer(base: String, user: String, password: String, datadir: String) 
+extends Mapnik2GeoTools.Output {
   val client = new httpclient.HttpClient()
 
   {
     val url = new java.net.URL(base)
     val credentials =
-      new httpclient.UsernamePasswordCredentials(auth._1, auth._2)
+      new httpclient.UsernamePasswordCredentials(user, password)
     client.getState().setCredentials(
       new httpclient.auth.AuthScope(
         url.getHost(), url.getPort(), httpclient.auth.AuthScope.ANY_REALM
