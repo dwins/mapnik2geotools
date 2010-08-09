@@ -3,8 +3,6 @@ import xml._
 import xml.transform._
 
 object Mapnik2GeoTools {
-  val gsDataDir = new java.net.URL("file:///home/dwins/Projects/osm_cpk_data/styles/")
-
   object PointSymTransformer extends RewriteRule {
     def convertPointSymbolizer(point: Elem): Node = {
       val attmap = point.attributes.asAttrMap
@@ -19,7 +17,7 @@ object Mapnik2GeoTools {
         if (path.isDefined) {
           <Graphic>
             <ExternalGraphic>
-              <OnlineResource xlink:href={new java.net.URL(gsDataDir, path.get).toString}/>
+              <OnlineResource xlink:href={ path.get }/>
               <Format>{ format }</Format>
             </ExternalGraphic>
           </Graphic>
@@ -202,7 +200,7 @@ object Mapnik2GeoTools {
         </Fill>
         <Graphic>
           <ExternalGraphic>
-            <OnlineResource xlink:href={new java.net.URL(gsDataDir, attmap("file")).toString}/>
+            <OnlineResource xlink:href={ attmap("file") }/>
             <Format>{
               attmap.getOrElse("type", "image/png") match {
                 case "png" => "image/png"
@@ -264,7 +262,7 @@ object Mapnik2GeoTools {
           <GraphicFill>
             <Graphic>
               <ExternalGraphic>
-                <OnlineResource xlink:href={new java.net.URL(gsDataDir, attrs("file")).toString}/>
+                <OnlineResource xlink:href={ attrs("file") }/>
                 <Format>{ format }</Format>
               </ExternalGraphic>
               <Size>{ attrs("height") }</Size>

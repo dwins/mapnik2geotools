@@ -4,6 +4,7 @@ import org.apache.commons.httpclient
 
 class GeoServer(base: String, user: String, password: String, datadir: String) 
 extends Mapnik2GeoTools.Output {
+  val dataUrl = new java.io.File(datadir).toURI.toURL
   val client = new httpclient.HttpClient()
 
   {
@@ -188,6 +189,8 @@ extends Mapnik2GeoTools.Output {
 
   def writeStyle(style: Node) {
     val name = style.attribute("name").map(_.text).getOrElse("style")
+    
+    val resolve = new xml.transform.RuleTransformer(URLResolver)
     val wrapper =
       <StyledLayerDescriptor
         version="1.0.0"
@@ -200,7 +203,7 @@ extends Mapnik2GeoTools.Output {
           <UserStyle>
             <Name>{ name }</Name>
             <FeatureTypeStyle>
-              { style.child }
+              { style.child map resolve }
             </FeatureTypeStyle>
           </UserStyle>
         </NamedLayer>
@@ -273,6 +276,21 @@ extends Mapnik2GeoTools.Output {
           <entry key="namespace">http://mercury/osm/</entry>
         </connectionParameters>
       </dataStore>
+  }
+
+  object URLResolver extends xml.transform.RewriteRule {
+    override def transform(n: Node): Seq[Node] = {
+      n match {
+        case e: Elem 
+          if e.label == "OnlineResource" && e.attributes.exists(_.key == "href")
+          => 
+            val link =
+              e.attributes.find(_.key == "href").get.value.head.text
+            val resolved = new java.net.URL(dataUrl, "styles/" + link)
+            <OnlineResource xlink:href={ resolved.toString }/>
+        case other => other
+      }
+    }
   }
 
   def writeLayers(layers: NodeSeq) {
