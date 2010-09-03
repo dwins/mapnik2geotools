@@ -43,39 +43,41 @@ object Mapnik2GeoTools {
         } yield { name -> faces }
       ) toMap
 
-    def convertTextSymbolizer(text: Elem): Node = {
-      val attmap = text.attributes.asAttrMap
-
-      <TextSymbolizer> {
-        if (attmap contains "name")
-          <Label>
-            { if (attmap.get("text_convert") == Some("toupper"))
+    private def extractLabel(atts: Map[String, String]) =
+      <Label>
+        { for (name <- atts.get("name").toSeq) yield
+            { if (atts.get("text_convert") == Some("toupper"))
                 <ogc:Function name="strToUpperCase">
-                  <ogc:PropertyName>{ attmap("name") }</ogc:PropertyName>
+                  <ogc:PropertyName>{ name }</ogc:PropertyName>
                 </ogc:Function>
               else
-                <ogc:PropertyName>{ attmap("name") }</ogc:PropertyName>
+                <ogc:PropertyName>{ name }</ogc:PropertyName>
             }
-          </Label>
         }
+      </Label>
 
-        <Font>
-          { if (attmap.contains("fontset_name") && fonts.contains(attmap("fontset_name")))
-              { for (face <- fonts(attmap("fontset_name")))
-                yield <CssParameter name="font-family">{ face }</CssParameter>
-              } flatten
-          }
-          <CssParameter name="font-size">{ attmap("size") }</CssParameter>
-          { if (attmap("fontset_name") contains "bold")
-              <CssParameter name="font-weight">bold</CssParameter>
-          }
-          { if (attmap("fontset_name") contains "oblique")
-              <CssParameter name="font-style">italic</CssParameter>
-          }
-        </Font>
+    private def extractFont(atts: Map[String, String]) =
+      <Font>
+        { for {
+            fontset <- atts.get("fontset_name").toSeq
+            fontList <- fonts.get(fontset).toSeq
+            family <- fontList
+          } yield <CssParameter name="font-family">{ family }</CssParameter>
+        }
+        { for (size <- atts.get("size").toSeq) yield
+            <CssParameter name="font-size">{size}</CssParameter>
+        }
+        { if (atts("fontset_name") contains "bold")
+            <CssParameter name="font-weight">bold</CssParameter>
+        }
+        { if (atts("fontset_name") contains "oblique")
+            <CssParameter name="font-style">italic</CssParameter>
+        }
+      </Font>
 
-        <LabelPlacement>
-        { if (attmap.get("placement") == Some("line"))
+    private def extractLabelPlacement(atts: Map[String, String]) =
+      <LabelPlacement>
+        { if (atts.get("placement") == Some("line"))
             <LinePlacement/>
           else
             <PointPlacement>
@@ -87,57 +89,102 @@ object Mapnik2GeoTools {
                   <ogc:Literal>0.5</ogc:Literal>
                 </AnchorPointY>
               </AnchorPoint>
-              { if ((attmap contains "dx") && (attmap contains "dy"))
-                <Displacement>
-                  <DisplacementX>
-                    <ogc:Literal>{ attmap("dx") }</ogc:Literal>
-                  </DisplacementX>
-                  <DisplacementY>
-                    <ogc:Literal>{ attmap("dy") }</ogc:Literal>
-                  </DisplacementY>
-                </Displacement>
+              { for (dx <- atts.get("dx").toSeq; dy <- atts.get("dy").toSeq) yield
+                  <Displacement>
+                    <DisplacementX>
+                      <ogc:Literal>{dx}</ogc:Literal>
+                    </DisplacementX>
+                    <DisplacementY>
+                      <ogc:Literal>{dy}</ogc:Literal>
+                    </DisplacementY>
+                  </Displacement>
               }
               <Rotation>
                 <ogc:Literal>0</ogc:Literal>
               </Rotation>
             </PointPlacement>
         }
-        </LabelPlacement>
+      </LabelPlacement>
 
-        { if (attmap contains "halo_fill") {
-            val fill = attmap("halo_fill").dropRight(1).drop(5)  // trims off "rgba(" and ")"
-            val rgb = fill.split(",").take(3).map(_.toInt)
-            val colorcode = "#%2x%2x%2x".format(rgb(0), rgb(1), rgb(2))
-            val opacity = fill.split(",").last.toDouble
-            <Halo>
-              <Radius>
-                <ogc:Literal> { attmap.getOrElse("halo_radius", "1") } </ogc:Literal>
-              </Radius>
-              <Fill>
-                <CssParameter name="fill">{colorcode}</CssParameter>
-                <CssParameter name="fill-opacity">{opacity}</CssParameter>
-              </Fill>
-            </Halo>
+    private def extractHalo(atts: Map[String, String]) =
+      for (fill <- atts.get("halo_fill").toSeq) yield
+        <Halo>
+          <Radius>
+            <ogc:Literal>{ atts.getOrElse("halo_radius", "1") }</ogc:Literal>
+          </Radius>
+          {
+            val trimmed = fill.drop(5).dropRight(1).split(",")
+            val rgb = trimmed.take(3).map(_.toInt)
+            val colorcode = "#%2x%2x%2x".format(rgb: _*)
+            val opacity = trimmed.last.toDouble
+            <Fill>
+              <CssParameter name="fill">{ colorcode }</CssParameter>
+              <CssParameter name="fill-opacity">{ opacity }</CssParameter>
+            </Fill>
+          }
+        </Halo>
+
+    private def extractFill(atts: Map[String, String]) =
+      <Fill>
+        { atts.get("fill").toSeq map {
+            case hex if hex.startsWith("#") && hex.length == 7
+              => <CssParameter name="fill">{ hex }</CssParameter>
+            case hex if hex.startsWith("#") && hex.length == 4
+              => <CssParameter name="fill">{ "#" + hex.tail.flatMap(c => c.toString * 2)}</CssParameter>
+            case _
+              => <CssParameter name="fill">#000000</CssParameter>
           }
         }
+      </Fill>
 
-        <Fill>
-          <CssParameter name="fill">{
-            attmap.getOrElse("fill", "#000000")
-          }</CssParameter>
-        </Fill>
+    private def extractGraphic(atts: Map[String, String]) =
+      for (file <- atts.get("file").toSeq) yield
+        <Graphic>
+          <ExternalGraphic>
+            <OnlineResource xlink:href={ file }/>
+            <Format>{
+              atts.getOrElse("type", "image/png") match {
+                case "png" => "image/png"
+                case "jpeg" => "image/jpeg"
+                case "gif" => "image/gif"
+                case "svg" => "image/svg"
+              }
+            }</Format>
+            { for (height <- atts.get("height").toSeq) yield
+                <Size>{ height }</Size>
+            }
+          </ExternalGraphic>
+        </Graphic>
+
+    def extractVendorParams(atts: Map[String, String]) = {
+      val knownParams =
+        Seq(
+          "min_distance" -> "spaceAround",
+          "spacing" -> "minGroupDistance"
+        )
+
+      for {
+        (mapnikName, gtName) <- knownParams
+        value <- atts.get(mapnikName)
+      } yield
+        <VendorOption name={gtName}>{ value }</VendorOption>
+    }
+
+    def convertTextSymbolizer(text: Elem): Node = {
+      val attmap = text.attributes.asAttrMap
+
+      <TextSymbolizer>
+        { extractLabel(attmap) }
+        { extractFont(attmap) }
+        { extractLabelPlacement(attmap) }
+        { extractHalo(attmap) }
+        { extractFill(attmap) }
 
         { if (attmap.get("placement") == Some("line"))
             <VendorOption name="followLine">true</VendorOption>
         }
 
-        { if (attmap contains "min_distance")
-            <VendorOption name="spaceAround">{ attmap("min_distance") }</VendorOption>
-        }
-
-        { if (attmap contains "spacing")
-            <VendorOption name="minGroupDistance">{ attmap("spacing") }</VendorOption>
-        }
+        { extractVendorParams(attmap) }
 
         { Comment(attmap.toString) }
       </TextSymbolizer>
@@ -147,82 +194,13 @@ object Mapnik2GeoTools {
       val attmap = shield.attributes.asAttrMap
 
       <TextSymbolizer>
-        { if (attmap contains "name")
-            <Label><ogc:PropertyName>{ attmap("name") }</ogc:PropertyName></Label>
-        }
-        <Font>
-          <CssParameter name="font-family">SansSerif</CssParameter>
-          { if (attmap("fontset_name") == Some("bold-fonts"))
-              <CssParameter name="font-weight">bold</CssParameter>
-          }
-          { if (attmap contains "size")
-              <CssParameter name="font-size">{ attmap("size") }</CssParameter>
-          }
-        </Font>
-        <LabelPlacement>
-          <PointPlacement>
-            <AnchorPoint>
-              <AnchorPointX>
-                <ogc:Literal>0.5</ogc:Literal>
-              </AnchorPointX>
-              <AnchorPointY>
-                <ogc:Literal>0.5</ogc:Literal>
-              </AnchorPointY>
-            </AnchorPoint>
-            { if ((attmap contains "dx") && (attmap contains "dy"))
-              <Displacement>
-                <DisplacementX>
-                  <ogc:Literal>{ attmap("dx") }</ogc:Literal>
-                </DisplacementX>
-                <DisplacementY>
-                  <ogc:Literal>{ attmap("dy") }</ogc:Literal>
-                </DisplacementY>
-              </Displacement>
-            }
-            <Rotation>
-              <ogc:Literal>0</ogc:Literal>
-            </Rotation>
-          </PointPlacement>
-        </LabelPlacement>
-        <Fill>
-          {
-            attmap.get("fill") match {
-              case Some(hex) if hex.startsWith("#") && hex.length == 7
-                => <CssParameter name="fill">{ hex }</CssParameter>
-              case Some(hex) if hex.startsWith("#") && hex.length == 4
-                => <CssParameter name="fill">{
-                    "#" + hex.tail.flatMap(c => c.toString * 2)
-                   }</CssParameter>
-              case _
-                => <CssParameter name="fill">#000000</CssParameter>
-            }
-          }
-        </Fill>
-        <Graphic>
-          <ExternalGraphic>
-            <OnlineResource xlink:href={ attmap("file") }/>
-            <Format>{
-              attmap.getOrElse("type", "image/png") match {
-                case "png" => "image/png"
-                case "jpeg" => "image/jpeg"
-                case "gif" => "image/gif"
-                case other => other
-              }
-            }</Format>
-            { if (attmap contains "height")
-                <Size>{ attmap("height") }</Size>
-            }
-          </ExternalGraphic>
-        </Graphic>
-
-        { if (attmap contains "min_distance")
-            <VendorOption name="spaceAround">{ attmap("min_distance") }</VendorOption>
-        }
-
-        { if (attmap contains "spacing")
-            <VendorOption name="minGroupDistance">{ attmap("spacing") }</VendorOption>
-        }
-
+        { extractLabel(attmap) }
+        { extractFont(attmap) }
+        { extractLabelPlacement(attmap) }
+        { extractHalo(attmap) }
+        { extractFill(attmap) }
+        { extractGraphic(attmap) }
+        { extractVendorParams(attmap) }
       </TextSymbolizer>
     }
 
@@ -240,7 +218,7 @@ object Mapnik2GeoTools {
     override def transform(node: Node): Seq[Node] =
       node match {
         case e: Elem if e.label == "LineSymbolizer" =>
-          e.copy(child = <Stroke>{e.child}</Stroke>)
+          e.copy(child = <Stroke>{ e.child }</Stroke>)
         case n => n
       }
   }
