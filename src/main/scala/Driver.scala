@@ -44,10 +44,9 @@ object Driver {
   def main(args: Array[String]) {
     val (switches, files) = parseOpts(args)
     for (file <- files) {
-      val source = new java.io.File(file)
-      val sink: Output = getSink(source, switches)
+      val sink: Output = getSink(new java.io.File(file), switches)
 
-      val original = XML.loadFile(source)
+      val original = XML.load(file)
       val convert =
         new transform.RuleTransformer(
           FilterTransformer,
@@ -57,7 +56,7 @@ object Driver {
           new TextSymTransformer(original \\ "FontSet"),
           RuleCleanup
         )
-      val doc = convert(XML.loadFile(source))
+      val doc = convert(original)
       for (style <- doc \\ "Style") sink.writeStyle(style)
       sink.writeLayers(doc \\ "Layer")
     }
