@@ -244,7 +244,9 @@ object Mapnik2GeoTools {
                 <OnlineResource xlink:href={ attrs("file") }/>
                 <Format>{ format }</Format>
               </ExternalGraphic>
-              <Size>{ attrs("height") }</Size>
+              { for (h <- attrs.get("height").toSeq) yield
+                  <Size>{ h }</Size>
+              }
             </Graphic>
           </GraphicFill>
         </Fill>
