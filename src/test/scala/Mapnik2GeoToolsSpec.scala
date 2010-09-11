@@ -15,7 +15,10 @@ object Mapnik2GeoToolsSpec extends Specification {
   "polygon symbolizers" should {
     val tx = new transform.RuleTransformer(PolygonSymTransformer)
     "not require a 'height' attribute" in {
-      tx(<PolygonPatternSymbolizer file="symbols/glacier.png" />) must \("Fill") \("GraphicFill")
+      val transformed =
+        tx(<PolygonPatternSymbolizer file="symbols/glacier.png" />)
+      transformed must \("Fill") \("GraphicFill")
+      transformed must not(\\("Size"))
     }
   }
 }
