@@ -21,4 +21,14 @@ object Mapnik2GeoToolsSpec extends Specification {
       transformed must not(\\("Size"))
     }
   }
+
+  "text symbolizers" should {
+    val tx =
+      new transform.RuleTransformer(new TextSymTransformer(Nil))
+    "not require a 'type' attribute for shield images" in {
+      val transformed =
+        tx(<ShieldSymbolizer name="ref" fontset_name="bold-fonts" size="10" fill="#fff" placement="line" file="&symbols;/mot_shield1.png" min_distance="30" spacing="750"/>)
+      transformed must \("Graphic")
+    }
+  }
 }

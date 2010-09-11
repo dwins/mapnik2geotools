@@ -149,6 +149,7 @@ object Mapnik2GeoTools {
                 case "jpeg" => "image/jpeg"
                 case "gif" => "image/gif"
                 case "svg" => "image/svg"
+                case other => other
               }
             }</Format>
             { for (height <- atts.get("height").toSeq) yield
