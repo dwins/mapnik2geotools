@@ -114,14 +114,20 @@ object Mapnik2GeoTools {
             <ogc:Literal>{ atts.getOrElse("halo_radius", "1") }</ogc:Literal>
           </Radius>
           {
-            val trimmed = fill.drop(5).dropRight(1).split(",")
-            val rgb = trimmed.take(3).map(_.toInt)
-            val colorcode = "#%2x%2x%2x".format(rgb: _*)
-            val opacity = trimmed.last.toDouble
-            <Fill>
-              <CssParameter name="fill">{ colorcode }</CssParameter>
-              <CssParameter name="fill-opacity">{ opacity }</CssParameter>
-            </Fill>
+            if (fill startsWith "#") {
+              <Fill>
+                <CssParameter name="fill">{fill}</CssParameter>
+              </Fill>
+            } else {
+              val trimmed = fill.drop(5).dropRight(1).split(",")
+              val rgb = trimmed.take(3).map(_.toInt)
+              val colorcode = "#%2x%2x%2x".format(rgb: _*)
+              val opacity = trimmed.last.toDouble
+              <Fill>
+                <CssParameter name="fill">{ colorcode }</CssParameter>
+                <CssParameter name="fill-opacity">{ opacity }</CssParameter>
+              </Fill>
+            }
           }
         </Halo>
 
