@@ -11,6 +11,7 @@ object Mapnik2GeoTools {
         case "png" => "image/png"
         case "gif" => "image/gif"
         case "jpeg" => "image/jpeg"
+        case other => other
       }
 
       <PointSymbolizer> {
