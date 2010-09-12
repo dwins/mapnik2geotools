@@ -1,9 +1,33 @@
 import org.specs._
+import specification.PendingUntilFixed
 import scala.xml._
 import Mapnik2GeoTools._
 
-object Mapnik2GeoToolsSpec extends Specification {
+object Mapnik2GeoToolsSpec extends Specification with PendingUntilFixed {
   "osm.xml should work" in {}
+
+  "line symbolizers" should {
+    val tx = new transform.RuleTransformer(LineSymTransformer)
+    "support patterns" in {
+      val transformed =
+        tx(<LinePatternSymbolizer file="symbols/chair_lift.png"></LinePatternSymbolizer>)
+
+      transformed.label must_== "LineSymbolizer"
+    } pendingUntilFixed
+
+    "expand stroke colors" in {
+      val transformed =
+        tx(
+          <LineSymbolizer>
+            <CssParameter name="stroke">#888</CssParameter>
+            <CssParameter name="stroke-width">1</CssParameter>
+            <CssParameter name="stroke-dasharray">2,4</CssParameter>
+          </LineSymbolizer>
+        )
+
+      transformed must \\(<CssParameter name="stroke">#888888</CssParameter>)
+    } pendingUntilFixed
+  }
 
   "point symbolizers" should {
     val tx = new transform.RuleTransformer(PointSymTransformer)
