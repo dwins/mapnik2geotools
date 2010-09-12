@@ -7,7 +7,7 @@ object Mapnik2GeoToolsSpec extends Specification with PendingUntilFixed {
   "osm.xml should work" in {}
 
   "line symbolizers" should {
-    val tx = new transform.RuleTransformer(LineSymTransformer)
+    val tx = new transform.RuleTransformer(LineSymTransformer, RuleCleanup)
     "support patterns" in {
       val transformed =
         tx(<LinePatternSymbolizer file="symbols/chair_lift.png"></LinePatternSymbolizer>)
@@ -26,7 +26,7 @@ object Mapnik2GeoToolsSpec extends Specification with PendingUntilFixed {
         )
 
       transformed must \\(<CssParameter name="stroke">#888888</CssParameter>)
-    } pendingUntilFixed
+    }
   }
 
   "point symbolizers" should {

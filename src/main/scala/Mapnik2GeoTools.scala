@@ -294,6 +294,17 @@ object Mapnik2GeoTools {
 
           rule.copy(child = child)
         case param: Elem if param.label == "CssParameter"
+          && param.attributes.asAttrMap.get("name") == Some("stroke")
+          =>
+          val color = param.text.trim
+          val cleaned = 
+            if (color.length == 4) {
+              color.take(1) + color.tail.flatMap(x => Seq(x, x))
+            } else {
+              color
+            }
+          param.copy(child = Text(cleaned))
+        case param: Elem if param.label == "CssParameter"
           && param.attributes.asAttrMap.get("name") == Some("stroke-dasharray")
           =>
           param.copy(child = Text(param.text.replaceAll(",", " ")))
