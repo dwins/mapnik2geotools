@@ -27,6 +27,20 @@ object Mapnik2GeoToolsSpec extends Specification with PendingUntilFixed {
 
       transformed must \\(<CssParameter name="stroke">#888888</CssParameter>)
     }
+
+    "extract CssParameters from attributes" in {
+      val transformed =
+        tx(<LineSymbolizer stroke="#b4b4b4" stroke-width="0.5"/>)
+
+      transformed must ==/(
+        <LineSymbolizer>
+          <Stroke>
+            <CssParameter name="stroke">#b4b4b4</CssParameter>
+            <CssParameter name="stroke-width">0.5</CssParameter>
+          </Stroke>
+        </LineSymbolizer>
+      )
+    }
   }
 
   "point symbolizers" should {

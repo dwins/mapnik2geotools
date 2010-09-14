@@ -223,10 +223,18 @@ object Mapnik2GeoTools {
   }
 
   object LineSymTransformer extends RewriteRule {
+    private def attsToParams(elem: Elem): Seq[Node] =
+    (
+      for ((k, v) <- elem.attributes.asAttrMap) yield
+        <CssParameter name={k}>{v}</CssParameter>
+    ).toSeq
+
     override def transform(node: Node): Seq[Node] =
       node match {
         case e: Elem if e.label == "LineSymbolizer" =>
-          e.copy(child = <Stroke>{ e.child }</Stroke>)
+          <LineSymbolizer>
+            <Stroke>{ attsToParams(e) ++ e.child }</Stroke>
+          </LineSymbolizer>
         case n => n
       }
   }
