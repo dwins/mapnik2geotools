@@ -62,12 +62,18 @@ class FileSystem(out: java.io.File) extends Mapnik2GeoTools.Output {
         (name, db, table, styles) <- datalayers
         where <- selectPattern.findFirstMatchIn(table) map(_.group(1).trim)
       } {
+	      val cleanName = name.replaceAll("[\\s-]", "_");
         val wrapper =
           """
-          CREATE OR REPLACE VIEW """ + name + """ AS SELECT """ + where + """;
+          CREATE TABLE """ + cleanName + """ AS SELECT """ + where + """;
+					ALTER TABLE """ + cleanName + """ ADD COLUMN id SERIAL;
+					ALTER TABLE """ + cleanName + """ ADD PRIMARY KEY (id);
+					INSERT INTO geometry_columns VALUES ( '', 'public', '""" + cleanName + """', 'way', 2, 900913, 'GEOMETRY');
+					CREATE INDEX """ + cleanName + """_idx ON """ + cleanName + """ USING GIST(way);
           """
         writer.write(wrapper)
       }
+			writer.write("VACUUM ANALYZE;")
 
       writer.close()
     }
