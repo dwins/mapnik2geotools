@@ -58,6 +58,20 @@ object Mapnik2GeoToolsSpec extends Specification with PendingUntilFixed {
       transformed must \("Fill") \("GraphicFill")
       transformed must not(\\("Size"))
     }
+
+    "extract CssParameters from attributes" in {
+      val transformed =
+        tx(<PolygonSymbolizer fill-opacity=".25" fill="#999999"/>)
+
+      transformed must ==/(
+        <PolygonSymbolizer>
+          <Fill>
+            <CssParameter name="fill-opacity">.25</CssParameter>
+            <CssParameter name="fill">#999999</CssParameter>
+          </Fill>
+        </PolygonSymbolizer>
+      )
+    }
   }
 
   "text symbolizers" should {

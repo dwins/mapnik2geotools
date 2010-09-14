@@ -3,6 +3,12 @@ import xml._
 import xml.transform._
 
 object Mapnik2GeoTools {
+  private def attsToParams(elem: Elem): Seq[Node] =
+    (
+      for ((k, v) <- elem.attributes.asAttrMap) yield
+        <CssParameter name={k}>{v}</CssParameter>
+    ).toSeq
+
   object PointSymTransformer extends RewriteRule {
     def convertPointSymbolizer(point: Elem): Node = {
       val attmap = point.attributes.asAttrMap
@@ -223,12 +229,6 @@ object Mapnik2GeoTools {
   }
 
   object LineSymTransformer extends RewriteRule {
-    private def attsToParams(elem: Elem): Seq[Node] =
-    (
-      for ((k, v) <- elem.attributes.asAttrMap) yield
-        <CssParameter name={k}>{v}</CssParameter>
-    ).toSeq
-
     override def transform(node: Node): Seq[Node] =
       node match {
         case e: Elem if e.label == "LineSymbolizer" =>
@@ -271,7 +271,9 @@ object Mapnik2GeoTools {
     override def transform(node: Node): Seq[Node] =
       node match {
         case e: Elem if e.label == "PolygonSymbolizer" =>
-          e.copy(child = <Fill>{e.child}</Fill>)
+          <PolygonSymbolizer>
+            <Fill>{ attsToParams(e) ++ e.child }</Fill>
+          </PolygonSymbolizer>
         case e: Elem if e.label == "PolygonPatternSymbolizer" =>
           convertPatternSymbolizer(e)
         case n => n
