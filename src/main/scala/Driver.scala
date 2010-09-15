@@ -53,9 +53,8 @@ object Driver {
           PointSymTransformer,
           LineSymTransformer,
           PolygonSymTransformer,
-          new TextSymTransformer(original \\ "FontSet"),
-          RuleCleanup
-        )
+          new TextSymTransformer(original \\ "FontSet")
+        ) andThen (new transform.RuleTransformer(RuleCleanup))
       val doc = convert(original)
       for (style <- doc \\ "Style") sink.writeStyle(style)
       sink.writeLayers(doc \\ "Layer")
