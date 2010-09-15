@@ -300,7 +300,7 @@ object Mapnik2GeoTools {
 
           // for easier debugging, throw the things that *didn't* get sorted in
           // at the end
-          val child = ordered ++ (rule.child diff ordered)
+          val child = (ordered ++ (rule.child diff ordered)).flatMap(transform)
 
           rule.copy(child = child)
         case param: Elem if param.label == "CssParameter"

@@ -20,12 +20,21 @@ object Mapnik2GeoToolsSpec extends Specification with PendingUntilFixed {
         tx(
           <LineSymbolizer>
             <CssParameter name="stroke">#888</CssParameter>
-            <CssParameter name="stroke-width">1</CssParameter>
-            <CssParameter name="stroke-dasharray">2,4</CssParameter>
           </LineSymbolizer>
         )
 
       transformed must \\(<CssParameter name="stroke">#888888</CssParameter>)
+    }
+
+    "translate dasharrays" in {
+      val transformed =
+        tx(
+          <LineSymbolizer>
+            <CssParameter name="stroke-dasharray">2,2</CssParameter>
+          </LineSymbolizer>
+        )
+
+      transformed must \\(<CssParameter name="stroke-dasharray">2 2</CssParameter>)
     }
 
     "extract CssParameters from attributes" in {
