@@ -52,13 +52,16 @@ object Mapnik2GeoTools {
 
     private def extractLabel(atts: Map[String, String]) =
       <Label>
-        { for (name <- atts.get("name").toSeq) yield
+        { for (
+            name <- atts.get("name").toSeq;
+            trimmed = name.replaceFirst("^\\[", "").replaceFirst("\\]$", "")
+          ) yield
             { if (atts.get("text_convert") == Some("toupper"))
                 <ogc:Function name="strToUpperCase">
-                  <ogc:PropertyName>{ name }</ogc:PropertyName>
+                  <ogc:PropertyName>{trimmed}</ogc:PropertyName>
                 </ogc:Function>
               else
-                <ogc:PropertyName>{ name }</ogc:PropertyName>
+                <ogc:PropertyName>{trimmed}</ogc:PropertyName>
             }
         }
       </Label>
