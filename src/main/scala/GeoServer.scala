@@ -106,7 +106,7 @@ extends Mapnik2GeoTools.Output {
       <namespace>
         <name>osm</name>
       </namespace>
-      <title>name</title>
+      <title>{name}</title>
       <srs>EPSG:900913</srs>
       <enabled>true</enabled>
       <store class="dataStore"><name>{ datastore }</name></store>
@@ -258,6 +258,8 @@ extends Mapnik2GeoTools.Output {
     val name = file
         .drop(file.lastIndexOf("/") + 1)
         .replaceAll("[\\s-]", "_")
+        .replaceAll(".shp$","")
+    val fullPath = "file:data/" + (if (file endsWith ".shp") file else file + ".shp")
 
     val toXML =
       <dataStore>
@@ -272,7 +274,7 @@ extends Mapnik2GeoTools.Output {
           <entry key="create spatial index">true</entry>
           <entry key="charset">ISO-8859-1</entry>
           <entry key="filetype">shapefile</entry>
-          <entry key="url">{ "file:data/" + file + ".shp" }</entry>
+          <entry key="url">{fullPath}</entry>
           <entry key="namespace">http://mercury/osm/</entry>
         </connectionParameters>
       </dataStore>

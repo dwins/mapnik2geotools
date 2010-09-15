@@ -304,7 +304,7 @@ object Mapnik2GeoTools {
 
           rule.copy(child = child)
         case param: Elem if param.label == "CssParameter"
-          && param.attributes.asAttrMap.get("name") == Some("stroke")
+          && param.attributes.asAttrMap.get("name") == Some("stroke") 
           =>
           val color = param.text.trim
           val cleaned = 
@@ -314,6 +314,17 @@ object Mapnik2GeoTools {
               color
             }
           param.copy(child = Text(cleaned))
+					case param: Elem if param.label == "CssParameter"
+	          && param.attributes.asAttrMap.get("name") == Some("fill") 
+	          =>
+	          val color = param.text.trim
+	          val cleaned = 
+	            if (color.length == 4) {
+	              color.take(1) + color.tail.flatMap(x => Seq(x, x))
+	            } else {
+	              color
+	            }
+	          param.copy(child = Text(cleaned))
         case param: Elem if param.label == "CssParameter"
           && param.attributes.asAttrMap.get("name") == Some("stroke-dasharray")
           =>
@@ -354,6 +365,11 @@ object Mapnik2GeoTools {
         <PropertyIsLessThan>{a}{b}</PropertyIsLessThan>
       }
 
+		val notEqualTo =
+      (property <~ ("<>" | "!=")) ~ value map { case a ~ b =>
+        <PropertyIsNotEqualTo>{a}{b}</PropertyIsNotEqualTo>
+      }
+
     def rewriteRegex(e: xml.Elem): xml.Elem =
       if (e.label == "PropertyName")
         e
@@ -372,9 +388,9 @@ object Mapnik2GeoTools {
         </PropertyIsLike>
       }
 
-    val comparison = equal | greater | greaterOrEqual | less | like
+    val comparison = equal | greater | greaterOrEqual | less | notEqualTo | like
 
-    val negated = "not" ~> comparison map (c => <Not>{c}</Not>)
+    val negated = "not" ~> child map (c => <Not>{c}</Not>)
 
     val conjunction = "(?i:or|and)".r map (_.toLowerCase)
 
