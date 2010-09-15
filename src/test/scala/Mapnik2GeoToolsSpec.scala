@@ -93,6 +93,10 @@ object Mapnik2GeoToolsSpec extends Specification with PendingUntilFixed {
       transformed must \("Graphic")
     }
 
+    "keep the <Size> element outside the ExternalGraphic" in {
+      tx(<ShieldSymbolizer file="foo.png" fontset_name="bold-fonts" height="12" width="12"/>) must \\("Graphic").\("Size")
+    }
+
     "support halo_fill in different formats" in {
       "hex" >> {
         val transformed =

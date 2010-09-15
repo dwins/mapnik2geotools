@@ -164,10 +164,10 @@ object Mapnik2GeoTools {
                 case other => other
               }
             }</Format>
-            { for (height <- atts.get("height").toSeq) yield
-                <Size>{ height }</Size>
-            }
           </ExternalGraphic>
+          { for (height <- atts.get("height").toSeq) yield
+              <Size>{ height }</Size>
+          }
         </Graphic>
 
     def extractVendorParams(atts: Map[String, String]) = {
