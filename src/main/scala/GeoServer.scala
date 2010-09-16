@@ -6,6 +6,8 @@ class GeoServer(base: String, user: String, password: String, datadir: String)
 extends Mapnik2GeoTools.Output {
   val dataUrl = new java.io.File(datadir).toURI.toURL
   val client = new httpclient.HttpClient()
+  val prefix = "osm" 
+  val namespace = "http://mercury/osm/"
 
   {
     val url = new java.net.URL(base)
@@ -80,13 +82,13 @@ extends Mapnik2GeoTools.Output {
 
   def addDataStore(store: Store): Int =
     post(
-      base + "/workspaces/osm/datastores/",
+      base + "/workspaces/" + prefix + "/datastores/",
       store.toXML
     )
 
   def updateDataStore(store: Store): Int = 
     put(
-      base + "/workspaces/osm/datastores/" + store.name,
+      base + "/workspaces/" + prefix + "/datastores/" + store.name,
       store.toXML
     )
 
@@ -104,9 +106,9 @@ extends Mapnik2GeoTools.Output {
       <name>{ name.replaceAll("[\\s-]", "_") }</name>
       <nativeName>{ name.replaceAll("[\\s-]", "_") }</nativeName>
       <namespace>
-        <name>osm</name>
+        <name>{ prefix }</name>
       </namespace>
-      <title>{name}</title>
+      <title>{ name }</title>
       <srs>EPSG:900913</srs>
       <enabled>true</enabled>
       <store class="dataStore"><name>{ datastore }</name></store>
@@ -114,14 +116,14 @@ extends Mapnik2GeoTools.Output {
 
   def addFeatureType(name: String, datastore: String, table: String): Int =
     post(
-      "%s/workspaces/osm/datastores/%s/featuretypes/".format(base, datastore),
+      "%s/workspaces/%s/datastores/%s/featuretypes/".format(base, prefix, datastore),
       featureTypeXML(name, datastore, table)
     )
 
   def updateFeatureType(name: String, datastore: String, table: String): Int =
     put(
-      "%s/workspaces/osm/datastores/%s/featuretypes/%s.xml"
-        .format(base, datastore, name),
+      "%s/workspaces/%s/datastores/%s/featuretypes/%s.xml"
+        .format(base, prefix, datastore, name),
       featureTypeXML(name, datastore, table)
     )
 
@@ -151,7 +153,7 @@ extends Mapnik2GeoTools.Output {
 
   def layerGroupXML(layers: Seq[(String, Seq[String])]) =
     <layerGroup>
-      <name>osm</name>
+      <name>{ prefix }</name>
       <layers>
         {
           for ((layer, styles) <- layers; _ <- styles)
@@ -174,7 +176,7 @@ extends Mapnik2GeoTools.Output {
 
   def updateLayerGroup(layers: Seq[(String, Seq[String])]): Int = 
     put(
-      base + "/layergroups/osm.xml",
+      base + "/layergroups/" + prefix + ".xml",
       layerGroupXML(layers)
     )
 
@@ -230,13 +232,13 @@ extends Mapnik2GeoTools.Output {
         <description>Auto-loaded datastore from Mapnik style</description>
         <type>PostGIS</type>
         <enabled>true</enabled>
-        <workspace><name>osm</name></workspace>
+        <workspace><name>{ prefix }</name></workspace>
         <connectionParameters>
           <entry key="user">{ user }</entry>
           <entry key="host">{ host }</entry>
           <entry key="port">{ port }</entry>
           <entry key="database">{ database }</entry>
-          <entry key="namespace">http://mercury/osm/</entry>
+          <entry key="namespace">{ namespace }</entry>
           <entry key="dbtype">postgis</entry>
           <entry key="Connection timeout">20</entry>
           <entry key="validate connections">false</entry>
@@ -267,15 +269,15 @@ extends Mapnik2GeoTools.Output {
         <type>Shapefile</type>
         <enabled>true</enabled>
         <workspace>
-          <name>osm</name>
+          <name>{ prefix }</name>
         </workspace>
         <connectionParameters>
           <entry key="memory mapped buffer">true</entry>
           <entry key="create spatial index">true</entry>
           <entry key="charset">ISO-8859-1</entry>
           <entry key="filetype">shapefile</entry>
-          <entry key="url">{fullPath}</entry>
-          <entry key="namespace">http://mercury/osm/</entry>
+          <entry key="url">{ fullPath }</entry>
+          <entry key="namespace">{ namespace }</entry>
         </connectionParameters>
       </dataStore>
   }
