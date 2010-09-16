@@ -2,12 +2,10 @@ import xml._
 import java.net.URLEncoder.encode
 import org.apache.commons.httpclient
 
-class GeoServer(base: String, user: String, password: String, datadir: String) 
+class GeoServer(base: String, user: String, password: String, datadir: String, prefix: String, namespace: String) 
 extends Mapnik2GeoTools.Output {
   val dataUrl = new java.io.File(datadir).toURI.toURL
   val client = new httpclient.HttpClient()
-  val prefix = "osm" 
-  val namespace = "http://mercury/osm/"
 
   {
     val url = new java.net.URL(base)

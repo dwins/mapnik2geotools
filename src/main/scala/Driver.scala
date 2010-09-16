@@ -32,7 +32,9 @@ object Driver {
         switches("rest"),
         switches.getOrElse("user", "admin"),
         switches.getOrElse("password", "geoserver"),
-        switches("datadir")
+        switches("datadir"),
+        switches.getOrElse("prefix", "mn2gt"),
+        switches.getOrElse("namespace", "http://mn2gt.com/")
       )
     } else {
       val outname = switches.getOrElse("out", "output")
