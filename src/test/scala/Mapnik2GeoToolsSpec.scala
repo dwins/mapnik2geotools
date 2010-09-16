@@ -106,6 +106,20 @@ object Mapnik2GeoToolsSpec extends Specification with PendingUntilFixed {
       tx(<ShieldSymbolizer file="foo.png" fontset_name="bold-fonts" height="12" width="12"/>) must \\("Graphic").\("Size")
     }
 
+    "create halos from only a halo_radius property" in {
+      val transformed = 
+        tx(<TextSymbolizer halo_radius="10" name="name" fontset_name="bold-fonts"/>)
+
+      transformed must \\(
+        <Halo>
+          <Radius><ogc:Literal>10</ogc:Literal></Radius>
+          <Fill>
+            <CssParameter name="fill">#ffffff</CssParameter>
+          </Fill>
+        </Halo>
+      )
+    }
+
     "support halo_fill in different formats" in {
       "hex" >> {
         val transformed =
