@@ -85,34 +85,37 @@ object Mapnik2GeoTools {
         }
       </Font>
 
+    private def pointPlacement(atts: Map[String, String]) =
+      <PointPlacement>
+        <AnchorPoint>
+          <AnchorPointX>
+            <ogc:Literal>0.5</ogc:Literal>
+          </AnchorPointX>
+          <AnchorPointY>
+            <ogc:Literal>0.5</ogc:Literal>
+          </AnchorPointY>
+        </AnchorPoint>
+        { for (dx <- atts.get("dx").toSeq; dy <- atts.get("dy").toSeq) yield
+            <Displacement>
+              <DisplacementX>
+                <ogc:Literal>{dx}</ogc:Literal>
+              </DisplacementX>
+              <DisplacementY>
+                <ogc:Literal>{dy}</ogc:Literal>
+              </DisplacementY>
+            </Displacement>
+        }
+        <Rotation>
+          <ogc:Literal>0</ogc:Literal>
+        </Rotation>
+      </PointPlacement>
+
     private def extractLabelPlacement(atts: Map[String, String]) =
       <LabelPlacement>
         { if (atts.get("placement") == Some("line"))
             <LinePlacement/>
           else
-            <PointPlacement>
-              <AnchorPoint>
-                <AnchorPointX>
-                  <ogc:Literal>0.5</ogc:Literal>
-                </AnchorPointX>
-                <AnchorPointY>
-                  <ogc:Literal>0.5</ogc:Literal>
-                </AnchorPointY>
-              </AnchorPoint>
-              { for (dx <- atts.get("dx").toSeq; dy <- atts.get("dy").toSeq) yield
-                  <Displacement>
-                    <DisplacementX>
-                      <ogc:Literal>{dx}</ogc:Literal>
-                    </DisplacementX>
-                    <DisplacementY>
-                      <ogc:Literal>{dy}</ogc:Literal>
-                    </DisplacementY>
-                  </Displacement>
-              }
-              <Rotation>
-                <ogc:Literal>0</ogc:Literal>
-              </Rotation>
-            </PointPlacement>
+            { pointPlacement(atts) }
         }
       </LabelPlacement>
 
@@ -213,7 +216,9 @@ object Mapnik2GeoTools {
       <TextSymbolizer>
         { extractLabel(attmap) }
         { extractFont(attmap) }
-        { extractLabelPlacement(attmap) }
+        <LabelPlacement>
+          { pointPlacement(attmap) }
+        </LabelPlacement>
         { extractHalo(attmap) }
         { extractFill(attmap) }
         { extractGraphic(attmap) }
