@@ -16,14 +16,23 @@ object Mapnik2GeoToolsSpec extends Specification with PendingUntilFixed {
     } pendingUntilFixed
 
     "expand stroke colors" in {
-      val transformed =
+      val shorthex =
         tx(
           <LineSymbolizer>
             <CssParameter name="stroke">#888</CssParameter>
           </LineSymbolizer>
         )
 
-      transformed must \\(<CssParameter name="stroke">#888888</CssParameter>)
+      shorthex must \\(<CssParameter name="stroke">#888888</CssParameter>)
+
+      val namedcolor =
+        tx(
+          <LineSymbolizer>
+            <CssParameter name="stroke">salmon</CssParameter>
+          </LineSymbolizer>
+        )
+
+      namedcolor must \\(<CssParameter name="stroke">#fa8072</CssParameter>)
     }
 
     "translate dasharrays" in {
@@ -107,7 +116,7 @@ object Mapnik2GeoToolsSpec extends Specification with PendingUntilFixed {
 
       "rgba" >> {
         val transformed =
-		  tx(<TextSymbolizer halo_fill="rgba(255,255,255,0.25)" name="name" fontset_name="bold-fonts" size="12" fill="#2b2b2b" halo_radius="2" dy="0" placement="line" max_char_angle_delta="40" text_convert="toupper"/>)
+          tx(<TextSymbolizer halo_fill="rgba(255,255,255,0.25)" name="name" fontset_name="bold-fonts" size="12" fill="#2b2b2b" halo_radius="2" dy="0" placement="line" max_char_angle_delta="40" text_convert="toupper"/>)
 
         transformed must \("Halo") \("Fill")
       }
