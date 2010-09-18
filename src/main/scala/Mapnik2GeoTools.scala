@@ -245,13 +245,16 @@ object Mapnik2GeoTools {
             <ogc:Literal>0.5</ogc:Literal>
           </AnchorPointY>
         </AnchorPoint>
-        { for (dx <- atts.get("dx").toSeq; dy <- atts.get("dy").toSeq) yield
+        { 
+          val dx = atts.get("dx")
+          val dy = atts.get("dy")
+          if (dx.isDefined || dy.isDefined)
             <Displacement>
               <DisplacementX>
-                <ogc:Literal>{dx}</ogc:Literal>
+                <ogc:Literal>{dx.getOrElse("0")}</ogc:Literal>
               </DisplacementX>
               <DisplacementY>
-                <ogc:Literal>{dy}</ogc:Literal>
+                <ogc:Literal>{dy.map(_.toDouble * -1).getOrElse(0)}</ogc:Literal>
               </DisplacementY>
             </Displacement>
         }
@@ -334,11 +337,17 @@ object Mapnik2GeoTools {
           "spacing" -> "minGroupDistance"
         )
 
-      for {
-        (mapnikName, gtName) <- knownParams
-        value <- atts.get(mapnikName)
-      } yield
-        <VendorOption name={gtName}>{ value }</VendorOption>
+      val params =
+        for {
+          (mapnikName, gtName) <- knownParams
+          value <- atts.get(mapnikName)
+        } yield
+          <VendorOption name={gtName}>{ value }</VendorOption>
+
+          params ++ <VendorOption name="autoWrap">5</VendorOption>
+          //(atts.get("wrap_width").map(
+          //  x => <VendorOption name="autoWrap">{x.toDouble * 5}</VendorOption>
+          //).toSeq)
     }
 
     def convertTextSymbolizer(text: Elem): Node = {
@@ -364,17 +373,33 @@ object Mapnik2GeoTools {
     def convertShieldSymbolizer(shield: Elem): Seq[Node] = {
       val attmap = shield.attributes.asAttrMap
 
-      <TextSymbolizer>
-        { extractLabel(attmap) }
-        { extractFont(attmap) }
-        <LabelPlacement>
-          { pointPlacement(attmap) }
-        </LabelPlacement>
-        { extractHalo(attmap) }
-        { extractFill(attmap) }
-        { extractGraphic(attmap) }
-        { extractVendorParams(attmap) }
-      </TextSymbolizer>
+      if (attmap.getOrElse("placement", "point") == "point") {
+        <PointSymbolizer>
+          { extractGraphic(attmap) }
+        </PointSymbolizer> ++
+        <TextSymbolizer>
+          { extractLabel(attmap) }
+          { extractFont(attmap) }
+          <LabelPlacement>
+            { pointPlacement(attmap) }
+          </LabelPlacement>
+          { extractHalo(attmap) }
+          { extractFill(attmap) }
+          { extractVendorParams(attmap) }
+        </TextSymbolizer>
+      } else {
+        <TextSymbolizer>
+          { extractLabel(attmap) }
+          { extractFont(attmap) }
+          <LabelPlacement>
+            { pointPlacement(attmap) }
+          </LabelPlacement>
+          { extractHalo(attmap) }
+          { extractFill(attmap) }
+          { extractGraphic(attmap) }
+          { extractVendorParams(attmap) }
+        </TextSymbolizer>
+      }
     }
 
     override def transform(node: Node): Seq[Node] =

@@ -103,7 +103,9 @@ object Mapnik2GeoToolsSpec extends Specification with PendingUntilFixed {
     }
 
     "keep the <Size> element outside the ExternalGraphic" in {
-      tx(<ShieldSymbolizer file="foo.png" fontset_name="bold-fonts" height="12" width="12"/>) must \\("Graphic").\("Size")
+      val transformed = 
+        tx(<ShieldSymbolizer file="foo.png" placement="line" fontset_name="bold-fonts" height="12" width="12"/>)
+      transformed must \\("Graphic").\("Size")
     }
 
     "create halos from only a halo_radius property" in {
@@ -118,6 +120,47 @@ object Mapnik2GeoToolsSpec extends Specification with PendingUntilFixed {
           </Fill>
         </Halo>
       )
+    }
+
+    "handle shields" in {
+      "with placement='line'" >> {
+        val transformed = 
+          tx(
+            <Rule>
+              <ShieldSymbolizer name="[shield_name]" placement="line" fontset_name="bold-fonts" size="10" fill="#fff" file="symbols/shield_fwy_us3.png" type="png" width="30" height="30" min_distance="20" spacing="600"/>
+            </Rule>
+          )
+
+        transformed must \\("TextSymbolizer").\("Graphic")
+        transformed must not(\\("PointSymbolizer"))
+      }
+
+      "with placement='point'" >> {
+        val transformed = 
+          tx(
+            <Rule>
+              <ShieldSymbolizer name="[name]" placement="point" fontset_name="bold-fonts" size="13" fill="#2b2b2b" dy="-13" halo_radius="2" halo_fill="rgba(255,255,255,0.25)" wrap_width="0" line_spacing="2" file="&symbols;/large-city.png" type="png" width="10" height="10" min_distance="20"/>
+            </Rule>
+          )
+
+        transformed must \\("TextSymbolizer")
+        transformed must not(\\("TextSymbolizer").\("Graphic"))
+        transformed must \\("PointSymbolizer").\("Graphic")
+      }
+
+      "with no specified placement" >> {
+        // should be equivalent to placement='point'
+        val transformed = 
+          tx(
+            <Rule>
+              <ShieldSymbolizer name="[name]" placement="point" fontset_name="bold-fonts" size="13" fill="#2b2b2b" dy="-13" halo_radius="2" halo_fill="rgba(255,255,255,0.25)" wrap_width="0" line_spacing="2" file="&symbols;/large-city.png" type="png" width="10" height="10" min_distance="20"/>
+            </Rule>
+          )
+
+        transformed must \\("TextSymbolizer")
+        transformed must not(\\("TextSymbolizer").\("Graphic"))
+        transformed must \\("PointSymbolizer").\("Graphic")
+      }
     }
 
     "support halo_fill in different formats" in {
