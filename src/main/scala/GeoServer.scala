@@ -134,51 +134,70 @@ extends Mapnik2GeoTools.Output {
     }
   }
 
-  def attachStyles(typename: String, styles: Seq[String]): Int = {
-    val message =
-      <layer>
-        <name>{ typename }</name>
-        <type>VECTOR</type>
-        <styles>
-          { for (s <- styles) yield <style><name>{s}</name></style> }
-        </styles>
-        <resource class="featureType"><name>{ typename }</name></resource>
-        <enabled>true</enabled>
-      </layer>
+  def layerXML(name: String, style: String, ftype: String) =
+    <layer>
+      <name>{ name }</name>
+      <type>VECTOR</type>
+      <styles>
+        <style><name>{ style }</name></style>
+      </styles>
+      <resource class="featureType"><name>{ ftype }</name></resource>
+      <enabled>true</enabled>
+    </layer>
 
-    put(base + "/layers/" + typename, message)
+  def addLayer(name: String, style: String, ftype: String): Int =
+    post(
+      "%s/layers/".format(base),
+      layerXML(name, style, ftype)
+    )
+
+  def updateLayer(name: String, style: String, ftype: String): Int =
+    put(
+      "%s/layers/%s".format(base, name),
+      layerXML(name, style, ftype)
+    )
+
+  def setLayer(name: String, style: String, ftype: String): Int = {
+    val status = updateLayer(name, ftype, ftype)
+    if (400 to 499 contains status) {
+      addLayer(name, style, ftype)
+    } else {
+      status
+    }
   }
 
-  def layerGroupXML(layers: Seq[(String, Seq[String])]) =
+  def attachStyles(typename: String, styles: Seq[String]) {
+    for (style <- styles) setLayer(style, style, typename)
+  }
+
+  def layerGroupXML(layers: Seq[Pair[String, String]]) =
     <layerGroup>
       <name>{ prefix }</name>
       <layers>
         {
-          for ((layer, styles) <- layers; _ <- styles)
-          yield <layer><name>{ layer }</name></layer>
+          for ((layer, _) <- layers) yield <layer><name>{ layer }</name></layer>
         }
       </layers>
       <styles>
         {
-          for ((_, styles) <- layers; style <- styles)
-          yield <style><name>{ style }</name></style>
+          for ((_, style) <- layers) yield <style><name>{ style }</name></style>
         }
       </styles>
     </layerGroup>
 
-  def addLayerGroup(layers: Seq[(String, Seq[String])]): Int =
+  def addLayerGroup(layers: Seq[Pair[String, String]]): Int =
     post(
       base + "/layergroups/",
       layerGroupXML(layers)
     )
 
-  def updateLayerGroup(layers: Seq[(String, Seq[String])]): Int = 
+  def updateLayerGroup(layers: Seq[Pair[String, String]]): Int = 
     put(
       base + "/layergroups/" + prefix + ".xml",
       layerGroupXML(layers)
     )
 
-  def setLayerGroup(layers: Seq[(String, Seq[String])]): Int = {
+  def setLayerGroup(layers: Seq[Pair[String, String]]): Int = {
     val status = updateLayerGroup(layers)
     if (400 to 499 contains status) {
       addLayerGroup(layers)
@@ -355,11 +374,8 @@ extends Mapnik2GeoTools.Output {
       attachStyles(id(store).replaceAll("[\\s-]", "_"), styles)
     }
 
-    setLayerGroup(datalayers map {
-      x => (
-        id(x).replaceAll("[\\s-]", "_"),
-        x._4.map(normalizeStyleName)
-      )
+    setLayerGroup(datalayers flatMap {
+      _._4.map(normalizeStyleName).map(x => (x, x))
     })
   }
 }
