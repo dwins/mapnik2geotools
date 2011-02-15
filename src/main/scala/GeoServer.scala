@@ -29,6 +29,8 @@ extends Mapnik2GeoTools.Output {
     def name: String
     def store: Store
     def styles: Seq[String]
+    def collectionURL: String
+    def resourceURL: String
     def asResourceXML: Node
     // def asLayerXML: Node
   }
@@ -114,40 +116,22 @@ extends Mapnik2GeoTools.Output {
   }
 
   def setFeatureType(layer: Layer): Int = {
-    val status = updateFeatureType(layer.name, layer.store.name, null)
+    val status = updateFeatureType(layer)
     if (400 to 499 contains status) {
-      addFeatureType(layer.name, layer.store.name, null)
+      addFeatureType(layer)
     } else {
       status
     }
   }
 
-  def featureTypeXML(name: String, datastore: String, table: String): Node =
-    <featureType>
-      <name>{ name.replaceAll("[\\s-]", "_") }</name>
-      <nativeName>{ name.replaceAll("[\\s-]", "_") }</nativeName>
-      <namespace>
-        <name>{ prefix }</name>
-      </namespace>
-      <title>{ name }</title>
-      <srs>EPSG:900913</srs>
-      <enabled>true</enabled>
-      <store class="dataStore"><name>{ datastore }</name></store>
-    </featureType>
-
-  def addFeatureType(name: String, datastore: String, table: String): Int =
+  def addFeatureType(layer: Layer): Int =
     post(
-      "%s/workspaces/%s/datastores/%s/featuretypes/".format(base, prefix, datastore),
-      featureTypeXML(name, datastore, table)
+      layer.collectionURL,
+      layer.asResourceXML
     )
 
-  def updateFeatureType(name: String, datastore: String, table: String): Int =
-    put(
-      "%s/workspaces/%s/datastores/%s/featuretypes/%s.xml"
-        .format(base, prefix, datastore, name),
-      featureTypeXML(name, datastore, table)
-    )
-
+  def updateFeatureType(layer: Layer): Int =
+    put(layer.resourceURL, layer.asResourceXML)
 
   def attachStyles(typename: String, styles: Seq[String]): Int = {
     val message =
@@ -286,6 +270,12 @@ extends Mapnik2GeoTools.Output {
 
   case class VectorLayer(name: String, store: Store, styles: Seq[String]) extends Layer {
     val id = name.replaceAll("[\\s-]", "_")
+
+    val collectionURL =
+      "%s/workspaces/%s/datastorese/%s/featuretypes/" format(base, prefix, store.name)
+
+    val resourceURL =
+      "%s/workspaces/%s/datastorese/%s/featuretypes/%s.xml" format(base, prefix, store.name, name)
 
     val asResourceXML = 
       <featureType>
