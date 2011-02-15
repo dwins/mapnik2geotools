@@ -26,6 +26,8 @@ extends Mapnik2GeoTools.Output {
 
   trait Layer {
     def id: String
+    def layerType: String
+    def resourceClass: String
     def name: String
     def store: Store
     def styles: Seq[String]
@@ -133,19 +135,19 @@ extends Mapnik2GeoTools.Output {
   def updateFeatureType(layer: Layer): Int =
     put(layer.resourceURL, layer.asResourceXML)
 
-  def attachStyles(typename: String, styles: Seq[String]): Int = {
+  def attachStyles(layer: Layer, styles: Seq[String]): Int = {
     val message =
       <layer>
-        <name>{ typename }</name>
-        <type>VECTOR</type>
+        <name>{ layer.id }</name>
+        <type>{ layer.layerType }</type>
         <styles>
           { for (s <- styles) yield <style><name>{s}</name></style> }
         </styles>
-        <resource class="featureType"><name>{ typename }</name></resource>
+        <resource class={ layer.resourceClass } ><name>{ layer.id }</name></resource>
         <enabled>true</enabled>
       </layer>
 
-    put(base + "/layers/" + typename, message)
+    put("%s/layers/%s.xml".format(base, layer.id), message)
   }
 
   def layerGroupXML(layers: Seq[(String, String)]) =
@@ -268,14 +270,37 @@ extends Mapnik2GeoTools.Output {
       </dataStore>
   }
 
+  case class RasterStore(file: String) extends Store {
+    val name = file
+      .drop(file.lastIndexOf("/") + 1)
+      .replaceAll("[\\s-]", "_")
+      .replaceAll(".tif$", "")
+
+    val fullPath = "file:data/" + file
+
+    val toXML =
+      <coverageStore>
+        <name>{ name }</name>
+        <enabled>true</enabled>
+        <workspace>
+          <name>{ prefix }</name>
+        </workspace>
+        <type>GeoTiff</type>
+        <url>{ fullPath }</url>
+      </coverageStore>
+  }
+
   case class VectorLayer(name: String, store: Store, styles: Seq[String]) extends Layer {
     val id = name.replaceAll("[\\s-]", "_")
 
     val collectionURL =
-      "%s/workspaces/%s/datastorese/%s/featuretypes/" format(base, prefix, store.name)
+      "%s/workspaces/%s/datastores/%s/featuretypes/" format(base, prefix, store.name)
 
     val resourceURL =
-      "%s/workspaces/%s/datastorese/%s/featuretypes/%s.xml" format(base, prefix, store.name, name)
+      "%s/workspaces/%s/datastores/%s/featuretypes/%s.xml" format(base, prefix, store.name, name)
+
+    val layerType = "VECTOR"
+    val resourceClass = "featureType"
 
     val asResourceXML = 
       <featureType>
@@ -291,6 +316,37 @@ extends Mapnik2GeoTools.Output {
           <name>{ store.name }</name>
         </store>
       </featureType>
+  }
+
+  case class RasterLayer(name: String, store: Store, styles: Seq[String]) extends Layer {
+    val id = name.replaceAll("[\\s-]", "_")
+    val collectionURL =
+      "%s/workspaces/%s/coveragestores/%s/coverages/" format(base, prefix, store.name)
+
+    val resourceURL = 
+      "%s/workspaces/%s/coveragestores/%s/coverages/%s.xml" format(base, prefix, store.name, name)
+
+    val resourceClass = "coverage"
+    val layerType = "RASTER"
+
+    val asResourceXML =
+      <coverage>
+        <name>{ name }</name>
+        <namespace>
+          <name>{ prefix }</name>
+        </namespace>
+        <srs>EPSG:900913</srs>
+        <nativeBoundingBox>
+          <minx>-20037508.3428</minx>
+          <miny>-20037508.3428</miny>
+          <maxx>20037508.3428</maxx>
+          <maxy>20037508.3428</maxy>
+        </nativeBoundingBox>
+        <enabled>true</enabled>
+        <store class="coverageStore">
+          <name>{ store.name }</name>
+        </store>
+      </coverage>
   }
 
   object URLResolver extends xml.transform.RewriteRule {
@@ -323,23 +379,26 @@ extends Mapnik2GeoTools.Output {
         storeType <- settings.get("type")
         if Set("shape","postgis") contains storeType
       } yield {
-        val store =
-          storeType match {
-            case "shape" => ShapefileStore(settings("file"))
-            case "postgis" =>
-              val dbname =
-                settings("table") match {
-                  case SelectStatement() => layer.attributes.asAttrMap("name")
-                  case table => table
-                }
-
-              PostgisStore(settings("user"), settings("host"), settings("port"), dbname)
-          }
-
         val name = layer.attributes.asAttrMap("name")
         val styles = layer \ "StyleName" map(s => normalizeStyleName(s.text))
 
-        VectorLayer(name, store, styles)
+        storeType match {
+          case "shape" => 
+            val store = ShapefileStore(settings("file"))
+            VectorLayer(name, store, styles)
+          case "postgis" =>
+            val dbname =
+              settings("table") match {
+                case SelectStatement() => layer.attributes.asAttrMap("name")
+                case table => table
+              }
+
+            val store = PostgisStore(settings("user"), settings("host"), settings("port"), dbname)
+            VectorLayer(name, store, styles)
+          case "raster" =>
+            val store = RasterStore(settings("file"))
+            RasterLayer(name, store, styles)
+        }
       }
 
     val stores = datalayers.map(_.store).distinct
@@ -348,7 +407,7 @@ extends Mapnik2GeoTools.Output {
 
     for (lyr <- datalayers; styles = lyr.styles) {
       setFeatureType(lyr)
-      attachStyles(lyr.id, styles)
+      attachStyles(lyr, styles)
     }
 
     setLayerGroup(
