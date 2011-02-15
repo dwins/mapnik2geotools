@@ -19,6 +19,20 @@ extends Mapnik2GeoTools.Output {
     )
   }
 
+  trait Store {
+    def name: String
+    def toXML: Node
+  }
+
+  trait Layer {
+    def id: String
+    def name: String
+    def store: Store
+    def styles: Seq[String]
+    def asResourceXML: Node
+    // def asLayerXML: Node
+  }
+
   def normalizeStyleName(name: String) = name.replaceAll("\\s+", "-")
 
   def post(url: String, message: Node, mime: String = "application/xml")
@@ -99,6 +113,15 @@ extends Mapnik2GeoTools.Output {
     }
   }
 
+  def setFeatureType(layer: Layer): Int = {
+    val status = updateFeatureType(layer.name, layer.store.name, null)
+    if (400 to 499 contains status) {
+      addFeatureType(layer.name, layer.store.name, null)
+    } else {
+      status
+    }
+  }
+
   def featureTypeXML(name: String, datastore: String, table: String): Node =
     <featureType>
       <name>{ name.replaceAll("[\\s-]", "_") }</name>
@@ -125,14 +148,6 @@ extends Mapnik2GeoTools.Output {
       featureTypeXML(name, datastore, table)
     )
 
-  def setFeatureType(name: String, datastore: String, table: String): Int = {
-    val status = updateFeatureType(name, datastore, table)
-    if (400 to 499 contains status) {
-      addFeatureType(name, datastore, table)
-    } else {
-      status
-    }
-  }
 
   def attachStyles(typename: String, styles: Seq[String]): Int = {
     val message =
@@ -149,36 +164,30 @@ extends Mapnik2GeoTools.Output {
     put(base + "/layers/" + typename, message)
   }
 
-  def layerGroupXML(layers: Seq[(String, Seq[String])]) =
+  def layerGroupXML(layers: Seq[(String, String)]) =
     <layerGroup>
       <name>{ prefix }</name>
       <layers>
-        {
-          for ((layer, styles) <- layers; _ <- styles)
-          yield <layer><name>{ layer }</name></layer>
-        }
+        { for ((layer, _) <- layers) yield <layer><name>{ layer }</name></layer> }
       </layers>
       <styles>
-        {
-          for ((_, styles) <- layers; style <- styles)
-          yield <style><name>{ style }</name></style>
-        }
+        { for ((_, style) <- layers) yield <style><name>{ style }</name></style> }
       </styles>
     </layerGroup>
 
-  def addLayerGroup(layers: Seq[(String, Seq[String])]): Int =
+  def addLayerGroup(layers: Seq[(String, String)]): Int =
     post(
       base + "/layergroups/",
       layerGroupXML(layers)
     )
 
-  def updateLayerGroup(layers: Seq[(String, Seq[String])]): Int = 
+  def updateLayerGroup(layers: Seq[(String, String)]): Int = 
     put(
       base + "/layergroups/" + prefix + ".xml",
       layerGroupXML(layers)
     )
 
-  def setLayerGroup(layers: Seq[(String, Seq[String])]): Int = {
+  def setLayerGroup(layers: Seq[(String, String)]): Int = {
     val status = updateLayerGroup(layers)
     if (400 to 499 contains status) {
       addLayerGroup(layers)
@@ -210,11 +219,6 @@ extends Mapnik2GeoTools.Output {
       </StyledLayerDescriptor>
 
     setStyle(normalizeStyleName(name), wrapper)
-  }
-
-  trait Store {
-    def name: String
-    def toXML: Node
   }
 
   case class PostgisStore(
@@ -280,6 +284,25 @@ extends Mapnik2GeoTools.Output {
       </dataStore>
   }
 
+  case class VectorLayer(name: String, store: Store, styles: Seq[String]) extends Layer {
+    val id = name.replaceAll("[\\s-]", "_")
+
+    val asResourceXML = 
+      <featureType>
+        <name>{ name.replaceAll("[\\s-]", "_") }</name>
+        <nativeName>{ name.replaceAll("[\\s-]", "_") }</nativeName>
+        <namespace>
+          <name>{ prefix }</name>
+        </namespace>
+        <title>{ name }</title>
+        <srs>EPSG:900913</srs>
+        <enabled>true</enabled>
+        <store class="dataStore">
+          <name>{ store.name }</name>
+        </store>
+      </featureType>
+  }
+
   object URLResolver extends xml.transform.RewriteRule {
     override def transform(n: Node): Seq[Node] = {
       n match {
@@ -301,65 +324,45 @@ extends Mapnik2GeoTools.Output {
         p => (p.attributes.asAttrMap("name"), p.text)
       } toMap
 
-    val selectPattern = """(?si:\(SELECT\s+(.*)\)\s+AS)""".r
+    val SelectStatement = """(?si:.*\(SELECT\s+.*\)\s+AS).*""".r
 
-    val datalayers =
+    val datalayers: Seq[Layer] =
       for {
         layer <- layers
         settings = params(layer \ "Datasource")
         storeType <- settings.get("type")
         if Set("shape","postgis") contains storeType
       } yield {
-        val (datastore, table) =
+        val store =
           storeType match {
-            case "shape" =>
-              val store = ShapefileStore(settings("file"))
-              (store, store.name)
+            case "shape" => ShapefileStore(settings("file"))
             case "postgis" =>
-              val store =
-                PostgisStore(
-                  settings("user"),
-                  settings("host"),
-                  settings("port"),
-                  settings("dbname")
-                )
+              val dbname =
+                settings("table") match {
+                  case SelectStatement() => layer.attributes.asAttrMap("name")
+                  case table => table
+                }
 
-              val table =
-                if (selectPattern.findFirstMatchIn(settings("table")).isDefined)
-                  layer.attributes.asAttrMap("name")
-                else
-                  settings("table")
-
-              (store, table)
+              PostgisStore(settings("user"), settings("host"), settings("port"), dbname)
           }
 
         val name = layer.attributes.asAttrMap("name")
         val styles = layer \ "StyleName" map(s => normalizeStyleName(s.text))
 
-        (table.replaceAll("[\\s-]", "_"), datastore, table, styles)
+        VectorLayer(name, store, styles)
       }
 
-    val databases = datalayers map(_._2) distinct
+    val stores = datalayers.map(_.store).distinct
 
-    for (store <- databases) setDataStore(store)
+    for (s <- stores) setDataStore(s)
 
-    // OMG HACKS XXX
-    def id(store: (String, _, String, _)): String =
-      //if (selectPattern.findFirstMatchIn(store._3).isDefined)
-        store._1
-      //else
-      //  store._3
-
-    for (store@(name, ds, table, styles) <- datalayers) {
-      setFeatureType(id(store), ds.name, name)
-      attachStyles(id(store).replaceAll("[\\s-]", "_"), styles)
+    for (lyr <- datalayers; styles = lyr.styles) {
+      setFeatureType(lyr)
+      attachStyles(lyr.id, styles)
     }
 
-    setLayerGroup(datalayers map {
-      x => (
-        id(x).replaceAll("[\\s-]", "_"),
-        x._4.map(normalizeStyleName)
-      )
-    })
+    setLayerGroup(
+      for (lyr <- datalayers; style <- lyr.styles) yield (lyr.id, style)
+    )
   }
 }
