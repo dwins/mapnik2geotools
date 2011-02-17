@@ -505,6 +505,10 @@ object Mapnik2GeoTools {
 
     val value = literal map (s => <Literal>{s}</Literal>)
 
+    val isNull = (property <~ "=" <~ "(?i)null".r) map {
+        case a => <PropertyIsNull>{a}</PropertyIsNull>
+      }
+
     val equal =
       (property <~ "=") ~ value map { case a ~ b =>
         <PropertyIsEqualTo>{a}{b}</PropertyIsEqualTo>
@@ -548,7 +552,7 @@ object Mapnik2GeoTools {
         </PropertyIsLike>
       }
 
-    val comparison = equal | greater | greaterOrEqual | less | notEqualTo | like
+    val comparison = isNull | equal | greater | greaterOrEqual | less | notEqualTo | like
 
     val negated = "not" ~> child map (c => <Not>{c}</Not>)
 
