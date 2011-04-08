@@ -14,6 +14,55 @@ setup
 2. ``sbt update`` to fetch dependencies
  
 3. ``sbt compile`` to build everything
+ 
+4. ``sbt "run my_mapnik_file.xml"`` to run it (see options below)
+
+options (overview)
+------------------
+
+sbt "run [options] {mapnik xml file}"
+
+* -- rest= (url to geoserver rest api, like
+  http://localhost:8080/geoserver/rest).  This tells mapnik2geotools to make
+  REST calls to GeoServer to duplicate a given mapnik.xml file.  Currently this means:
+
+    * Upload one style for every <Style> element referenced in any <Layer>
+
+    * Configure raster/vector layers for the following DataSource types:
+
+      * geotiff
+
+      * shapefile
+
+      * postgis
+
+    * Configure a GeoServer LayerGroup so that you can conveniently reference
+      them all in a single WMS request
+
+  You also need to provide:
+    * --datadir=(some path). The tool creates SLD image references based on this parameter.
+
+  Additional options which affect the configuration set via REST include:
+    
+    * --user=(username) [defaults to ``admin``]. This is the username that the
+      tool will use to authenticate itself with GeoServer.
+    * --password=(password) [defaults to ``geoserver``].  This is the password
+      that the tool will use to authenticate itself with GeoServer.
+    * --prefix=(some xml prefix) [defaults to ``mn2gt``].  This is the prefix
+      of a workspace that will be associated with all layers uploaded (except
+      the containing layergroup since those do not have workspaces).  You must
+      create the workspace yourself before running the tool.
+    * --namespace=(some xml namespace URI) [defaults to ``http://mn2gt.com/``].
+      This is the URI for the workspace mentioned above.
+
+If you don't provide a REST URL, the tool instead dumps some output to the filesystem:
+   
+  * One SLD file per <Style> element in the Mapnik XML
+  * One (database).sql file for each database referenced in the Mapnik XML.
+    These contain ``CREATE VIEW`` statements used to workaround the fact that
+    mapnik allows prefiltering data by using a SQL subquery in place of a table
+    name.  mapnik2geotools assumes you've already run these sql scripts before
+    you run the REST configuration.
 
 usage
 -----
@@ -50,3 +99,10 @@ to get GeoServer fully setup:
 bugs/feature requests
 ---------------------
 many. let me know what you find :)
+
+mailing list
+------------
+
+There is a public mailing list at
+https://groups.google.com/a/opengeo.org/group/mapnik2geotools/topics where you
+can ask for help and discuss new feature ideas.
