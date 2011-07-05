@@ -4,7 +4,7 @@ version := "0.1"
 
 organization := "org.opengeo"
 
-scalaVersion := "2.8.1"
+scalaVersion := "2.9.0-1"
 
 libraryDependencies ++= Seq(
   "commons-httpclient" % "commons-httpclient" % "3.1",

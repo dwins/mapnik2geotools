@@ -6,7 +6,7 @@ import Mapnik2GeoTools._
 object Mapnik2GeoToolsSpec extends Specification with PendingUntilFixed {
   "osm.xml should work" in {}
 
-  "line symbolizers" should {
+  {
     val tx = new transform.RuleTransformer(LineSymTransformer, RuleCleanup)
     "support patterns" in {
       val transformed =
@@ -60,15 +60,16 @@ object Mapnik2GeoToolsSpec extends Specification with PendingUntilFixed {
       )
     }
   }
-
-  "point symbolizers" should {
+  
+  {
     val tx = new transform.RuleTransformer(PointSymTransformer)
     "not require a 'type' attribute" in {
       tx(<PointSymbolizer file="symbols/lock_gate.png" />) must \("Graphic")
     }
   }
+  
 
-  "polygon symbolizers" should {
+  {
     val tx = new transform.RuleTransformer(PolygonSymTransformer)
     "not require a 'height' attribute" in {
       val transformed =
@@ -92,7 +93,7 @@ object Mapnik2GeoToolsSpec extends Specification with PendingUntilFixed {
     }
   }
 
-  "text symbolizers" should {
+  {
     val tx =
       new transform.RuleTransformer(new TextSymTransformer(Nil))
 
