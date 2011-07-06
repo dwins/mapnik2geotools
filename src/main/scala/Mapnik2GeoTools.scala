@@ -165,6 +165,7 @@ object Mapnik2GeoTools {
       val path = attmap.get("file")
       val format = attmap.getOrElse("type", "image/png") match {
         case "png" => "image/png"
+        case "svg" => "image/svg"
         case "gif" => "image/gif"
         case "jpeg" => "image/jpeg"
         case other => other
