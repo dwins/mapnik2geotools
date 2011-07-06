@@ -554,7 +554,7 @@ object Mapnik2GeoTools {
 
     val comparison = isNull | equal | greater | greaterOrEqual | less | notEqualTo | like
 
-    val negated = "not" ~> child map (c => <Not>{c}</Not>)
+    val negated = ("!" | "not") ~> child map (c => <Not>{c}</Not>)
 
     val conjunction = "(?i:or|and)".r map (_.toLowerCase)
 
