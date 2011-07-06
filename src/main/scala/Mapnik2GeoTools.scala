@@ -196,7 +196,7 @@ object Mapnik2GeoTools {
         for {
           fset <- fontsets
           name = fset.attributes.asAttrMap("name")
-          faces = fset \\ "@face_name" map(_.text)
+          faces = fset \\ "@face-name" map(_.text)
         } yield { name -> faces }
       ) toMap
 
