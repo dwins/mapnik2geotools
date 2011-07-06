@@ -270,13 +270,13 @@ object Mapnik2GeoTools {
       </LabelPlacement>
 
     private def extractHalo(atts: Map[String, String]) =
-      for (radius <- atts.get("halo_radius").toSeq) yield
+      for (radius <- atts.get("halo-radius").toSeq) yield
         <Halo>
           <Radius>
             <ogc:Literal>{ radius }</ogc:Literal>
           </Radius>
           {
-            val fill = atts.getOrElse("halo_fill", "#ffffff")
+            val fill = atts.getOrElse("halo-fill", "#ffffff")
             if (fill startsWith "#") {
               <Fill>
                 <CssParameter name="fill">{fill}</CssParameter>

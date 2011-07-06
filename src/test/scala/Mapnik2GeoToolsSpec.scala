@@ -109,7 +109,7 @@ object Mapnik2GeoToolsSpec extends Specification with PendingUntilFixed {
 
     "create halos from only a halo_radius property" in {
       val transformed = 
-        tx(<TextSymbolizer halo_radius="10" name="name" fontset-name="bold-fonts"/>)
+        tx(<TextSymbolizer halo-radius="10" name="name" fontset-name="bold-fonts"/>)
 
       transformed must \\(
         <Halo>
@@ -124,14 +124,14 @@ object Mapnik2GeoToolsSpec extends Specification with PendingUntilFixed {
     "support halo_fill in different formats" in {
       "hex" >> {
         val transformed =
-          tx(<TextSymbolizer halo_fill="#fed7a5" name="name" fontset-name="book-fonts" size="8" fill="black" halo_radius="1" placement="line"/>)
+          tx(<TextSymbolizer halo-fill="#fed7a5" name="name" fontset-name="book-fonts" size="8" fill="black" halo-radius="1" placement="line"/>)
 
         transformed must \("Halo") \("Fill")
       }
 
       "rgba" >> {
         val transformed =
-          tx(<TextSymbolizer halo_fill="rgba(255,255,255,0.25)" name="name" fontset-name="bold-fonts" size="12" fill="#2b2b2b" halo_radius="2" dy="0" placement="line" max_char_angle_delta="40" text_convert="toupper"/>)
+          tx(<TextSymbolizer halo-fill="rgba(255,255,255,0.25)" name="name" fontset-name="bold-fonts" size="12" fill="#2b2b2b" halo-radius="2" dy="0" placement="line" max_char_angle_delta="40" text_convert="toupper"/>)
 
         transformed must \("Halo") \("Fill")
       }
