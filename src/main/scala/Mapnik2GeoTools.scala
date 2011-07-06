@@ -153,6 +153,20 @@ object Mapnik2GeoTools {
     "yellowgreen" -> "#9acd32"
   )
 
+  def guessImageType(file: String, mediaType: Option[String]): String = {
+    val suffix = mediaType match {
+      case Some(t) => t
+      case None => (file drop file.lastIndexOf('.')) tail
+    }
+    suffix match {
+      case "png" => "image/png"
+      case "svg" => "image/svg+xml"
+      case "gif" => "image/gif"
+      case "jpg" => "image/jpeg"
+      case other => other
+    }
+  }
+
   private def attsToParams(elem: Elem): Seq[Node] =
     (
       for ((k, v) <- elem.attributes.asAttrMap) yield
@@ -163,20 +177,13 @@ object Mapnik2GeoTools {
     def convertPointSymbolizer(point: Elem): Node = {
       val attmap = point.attributes.asAttrMap
       val path = attmap.get("file")
-      val format = attmap.getOrElse("type", "image/png") match {
-        case "png" => "image/png"
-        case "svg" => "image/svg"
-        case "gif" => "image/gif"
-        case "jpeg" => "image/jpeg"
-        case other => other
-      }
 
       <PointSymbolizer> {
         if (path.isDefined) {
           <Graphic>
             <ExternalGraphic>
               <OnlineResource xlink:href={ path.get }/>
-              <Format>{ format }</Format>
+              <Format>{ guessImageType(path.get, attmap.get("type")) }</Format>
             </ExternalGraphic>
           </Graphic>
         }
@@ -313,15 +320,7 @@ object Mapnik2GeoTools {
         <Graphic>
           <ExternalGraphic>
             <OnlineResource xlink:href={ file }/>
-            <Format>{
-              atts.getOrElse("type", "image/png") match {
-                case "png" => "image/png"
-                case "jpeg" => "image/jpeg"
-                case "gif" => "image/gif"
-                case "svg" => "image/svg"
-                case other => other
-              }
-            }</Format>
+            <Format>{ guessImageType(file, atts.get("type")) }</Format>
           </ExternalGraphic>
           { for (height <- atts.get("height").toSeq) yield
               <Size>{ height }</Size>
