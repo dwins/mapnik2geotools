@@ -190,6 +190,84 @@ object Mapnik2GeoTools {
       }
   }
 
+  object MarkersSymTransformer extends RewriteRule {
+    import com.codecommit.antixml
+    import antixml.{ nodeSeqToConverter, stringTupleToQNameTuple } 
+
+    // Map of Mapnik symbol names to GeoTools/SLD symbol names
+    // TODO: Add support for ellipses in GeoTools (somehow; the SLD spec doesn't make it straightforward)
+    private val MarkerMapping =
+      Map("ellipse" -> "circle", "arrow" -> "arrow")
+
+    private val DefaultMarkerTypes =
+      Map("point" -> "ellipse", "line" -> "arrow")
+
+    def convertMarkersSymbolizer(e: antixml.Elem): Seq[Node] = {
+      val allowOverlap = e.attrs.get("allow_overlap").map(_.toBoolean).getOrElse(false)
+      val spacing = e.attrs.get("spacing").map(_.toInt).getOrElse(100)
+      val maxError = e.attrs.get("max_error").map(_.toDouble).getOrElse(0.2)
+      val filename = e.attrs.get("filename")
+      val transform = e.attrs.get("transform")
+      val opacity = e.attrs.get("opacity").map(_.toDouble).getOrElse(1d)
+      val fill = e.attrs.get("fill")
+      val stroke = e.attrs.get("stroke")
+      val strokeWidth = e.attrs.get("stroke-width").map(_.toDouble).getOrElse(1d)
+      val strokeOpacity = e.attrs.get("stroke-opacity").map(_.toDouble).getOrElse(1d)
+      val width = e.attrs.get("width").map(_.toDouble).getOrElse(5d)
+      val height = e.attrs.get("height").map(_.toDouble).getOrElse(5d)
+      val placement = e.attrs.get("placement").getOrElse("line") // line or point
+      val markerType = e.attrs.get("marker-type").getOrElse(DefaultMarkerTypes(placement)) // ellipse or arrow
+
+      require(Seq(filename, fill, stroke).exists(_ isDefined))
+      require(Set("point", "line") contains placement)
+      require(Set("ellipse", "arrow") contains markerType)
+
+      val graphic =
+        filename match {
+          case Some(filename) =>
+            // Note: the Mapnik docs say only SVG is supported here, I don't
+            // explicitly check
+            <Graphic>
+              <ExternalGraphic>
+                <OnlineResource xlink:type="simple" xlink:href={filename}/>
+                <Format>image/svg</Format>
+              </ExternalGraphic>
+              <Size>{ math.max(width, height) }</Size>
+            </Graphic>
+          case None =>
+            val fillXml = 
+              <Fill>
+                <CssParameter name="fill">{fill.get}</CssParameter>
+                <CssParameter name="fill-opacity">{opacity}</CssParameter>
+              </Fill>
+
+            val strokeXml = 
+              <Stroke>
+                <CssParameter name="stroke">{stroke.get}</CssParameter>
+                <CssParameter name="stroke-opacity">{strokeOpacity}</CssParameter>
+                <CssParameter name="stroke-width">{strokeWidth}</CssParameter>
+              </Stroke>;
+
+            <Graphic>
+              <Mark>
+                <WellKnownName>{ MarkerMapping.getOrElse(markerType, markerType) }</WellKnownName>
+                { fillXml ++ strokeXml }
+              </Mark>
+              <Size>{ math.max(width, height) }</Size>
+            </Graphic>
+        }
+
+        <PointSymbolizer>{ graphic }</PointSymbolizer>
+    }
+
+    override def transform(node: Node): Seq[Node] =
+      node match {
+        case e @ Elem(_, "MarkersSymbolizer", _, _, _*) =>
+          convertMarkersSymbolizer(e.asInstanceOf[Elem].convert)
+        case n => n
+      }
+  }
+
   class TextSymTransformer(fontsets: NodeSeq) extends RewriteRule {
     val fonts: Map[String, Seq[String]] =
       (

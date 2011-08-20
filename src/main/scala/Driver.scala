@@ -53,6 +53,7 @@ object Driver {
         new transform.RuleTransformer(
           FilterTransformer,
           PointSymTransformer,
+          MarkersSymTransformer,
           LineSymTransformer,
           PolygonSymTransformer,
           new TextSymTransformer(original \\ "FontSet")
