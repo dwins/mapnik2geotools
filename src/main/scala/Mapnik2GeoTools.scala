@@ -219,7 +219,7 @@ object Mapnik2GeoTools {
     private def extractFont(atts: Map[String, String]) =
       <Font>
         { for {
-            fontset <- atts.get("fontset_name").toSeq
+            fontset <- atts.get("fontset-name").toSeq
             fontList <- fonts.get(fontset).toSeq
             family <- fontList
           } yield <CssParameter name="font-family">{ family }</CssParameter>
@@ -227,10 +227,10 @@ object Mapnik2GeoTools {
         { for (size <- atts.get("size").toSeq) yield
             <CssParameter name="font-size">{size}</CssParameter>
         }
-        { if (atts("fontset_name") contains "bold")
+        { if (atts("fontset-name") contains "bold")
             <CssParameter name="font-weight">bold</CssParameter>
         }
-        { if (atts("fontset_name") contains "oblique")
+        { if (atts("fontset-name") contains "oblique")
             <CssParameter name="font-style">italic</CssParameter>
         }
       </Font>
