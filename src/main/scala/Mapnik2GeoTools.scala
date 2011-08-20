@@ -450,6 +450,7 @@ object Mapnik2GeoTools {
         case rule: Elem if rule.label == "Rule" =>
           val ordered =
             (rule \ "Filter") ++
+            (rule \ "ElseFilter") ++
             (rule \ "MinScaleDenominator") ++
             (rule \ "MaxScaleDenominator") ++
             (rule \ "PolygonSymbolizer") ++
