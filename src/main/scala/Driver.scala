@@ -56,7 +56,8 @@ object Driver {
           MarkersSymTransformer,
           LineSymTransformer,
           PolygonSymTransformer,
-          new TextSymTransformer(original \\ "FontSet")
+          RasterSymTransformer //,
+          // new TextSymTransformer(original \\ "FontSet")
         ) andThen (new transform.RuleTransformer(RuleCleanup))
       val doc = convert(original)
       for (style <- doc \\ "Style") sink.writeStyle(style)
