@@ -8,9 +8,10 @@ scalaVersion := "2.9.0-1"
 
 resolvers += ScalaToolsSnapshots
 
+mainClass in Assembly := Some("me.winslow.d.mn2gt.GUI")
+
 libraryDependencies ++= Seq(
   "commons-httpclient" % "commons-httpclient" % "3.1",
-  "com.codecommit" %% "anti-xml" % "0.3-SNAPSHOT",
   "org.scala-tools.testing" %% "specs" % "[1.6.0,1.7[" % "test"
 )
 

@@ -1,9 +1,11 @@
+package me.winslow.d.mn2gt
 import util.parsing.combinator._
 import xml._
 import xml.transform._
 
 object Mapnik2GeoTools {
-  import me.winslow.d.mn2gt.CSS.colors
+  import CSS.colors
+
   private def attsToParams(elem: Elem): Seq[Node] =
     (
       for ((k, v) <- elem.attributes.asAttrMap) yield

@@ -1,3 +1,5 @@
+package me.winslow.d.mn2gt
+
 import org.specs._
 import specification.PendingUntilFixed
 import scala.xml._
@@ -95,7 +97,9 @@ object Mapnik2GeoToolsSpec extends Specification with PendingUntilFixed {
 
   {
     val tx =
-      new transform.RuleTransformer(new TextSymTransformer(Nil))
+      new transform.RuleTransformer(
+        new me.winslow.d.mn2gt.TextSymbolizerTransformer(Nil)
+      )
 
     "not require a 'type' attribute for shield images" in {
       val transformed =

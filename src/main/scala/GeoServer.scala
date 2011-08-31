@@ -1,3 +1,5 @@
+package me.winslow.d.mn2gt
+
 import xml._
 import java.net.URLEncoder.encode
 import org.apache.commons.httpclient

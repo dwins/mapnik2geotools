@@ -1,3 +1,5 @@
+package me.winslow.d.mn2gt
+
 import xml._
 
 class FileSystem(out: java.io.File) extends Mapnik2GeoTools.Output {
