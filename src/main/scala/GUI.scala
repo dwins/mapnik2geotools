@@ -1,325 +1,302 @@
 package me.winslow.d.mn2gt
 
-object GUI extends swing.SwingApplication {
-  class FileField extends {
-    val textField = new swing.TextField() {
-      preferredSize = new swing.Dimension(120, preferredSize.height)
-    }
-    val fileChooser = new swing.FileChooser()
-    val chooserButton = new swing.Button("Choose...") 
-  } with swing.BoxPanel(swing.Orientation.Horizontal) {
-    contents += (textField, chooserButton)
-    chooserButton.action = swing.Action("Choose...") {
-      import swing.FileChooser.Result._
-      fileChooser.showOpenDialog(chooserButton) match {
-        case Approve =>
-          textField.text = fileChooser.selectedFile.getAbsolutePath
+import scala.swing._
+import javax.swing
+
+object GUI extends SwingApplication {
+
+  import GridBagPanel._
+
+  sealed trait Operation
+  case class LocalConversion(
+    mapnikFile: java.io.File,
+    outputDirectory: java.io.File
+  ) extends Operation
+
+  case class PublishToGeoServer(
+    mapnikFile: java.io.File,
+    connection: GeoServerConnection
+  ) extends Operation
+
+  sealed trait OperationMode
+  object Local extends OperationMode
+  object Remote extends OperationMode
+
+  sealed case class GeoServerConnection(
+    url: String,
+    username: String,
+    password: String,
+    datadir: String,
+    namespacePrefix: String,
+    namespaceUri: String
+  )
+
+  object State {
+    var mapnikFile: Option[java.io.File] = None
+    var outputDir: Option[java.io.File] = None
+    var mode: OperationMode = Local
+    var geoserverConnection: Option[GeoServerConnection] = None
+
+    def isValid =
+      mode match {
+        case Local => mapnikFile.isDefined && outputDir.isDefined
+        case Remote => mapnikFile.isDefined && geoserverConnection.isDefined
       }
+
+    def job: Option[Operation] =
+      mode match {
+        case Local =>
+          for {
+            mf <- mapnikFile
+            od <- outputDir
+          } yield LocalConversion(mf, od)
+        case Remote =>
+          for {
+            mf <- mapnikFile
+            conn <- geoserverConnection
+          } yield PublishToGeoServer(mf, conn)
+      }
+  }
+
+  case class ConnectionSpecified(conn: GeoServerConnection)
+    extends scala.swing.event.Event
+
+  class InputBox extends GridBagPanel {
+    val mapnikFileLabel = new Label("Mapnik XML")
+    val mapnikFileField = new TextField(30)
+    val fileChooserLauncher = new Button("Open...")
+
+    border = new swing.border.TitledBorder("Input")
+    enabled = false
+    layout += (
+      mapnikFileLabel -> ((0, 0): Constraints),
+      mapnikFileField -> ((1, 0): Constraints),
+      fileChooserLauncher -> ((2, 0): Constraints)
+    )
+  }
+
+  class OperationBox extends GridBagPanel {
+    val local = new RadioButton("Just save SLD files to local disk")
+    val publish = new RadioButton("Really publish layers to GeoServer")
+    val group = new ButtonGroup(local, publish)
+
+    border = new swing.border.TitledBorder("Operation")
+    layout += (
+      local -> new Constraints {
+        grid = (0, 0)
+        anchor = Anchor.West
+      },
+      publish -> new Constraints {
+        grid = (0, 1)
+        anchor = Anchor.West
+      }
+    )
+  }
+
+  class OutputBox extends GridBagPanel {
+    val outputDirLabel = new Label("SLD directory")
+    val outputDirField = new TextField(30)
+    val fileChooserLauncher = new Button("Open...")
+
+    border = new swing.border.TitledBorder("Local Output")
+
+    override def enabled_=(b: Boolean) = {
+      super.enabled = b
+      outputDirLabel.enabled = b
+      outputDirField.enabled = b
+      fileChooserLauncher.enabled = b
     }
+
+    layout += (
+      outputDirLabel -> ((0, 0): Constraints),
+      outputDirField -> ((1, 0): Constraints),
+      fileChooserLauncher -> ((2, 0): Constraints)
+    )
   }
 
-  locally {
-    import javax.swing.UIManager.{ getInstalledLookAndFeels, setLookAndFeel }
-    import collection.JavaConversions._
-    for (nimbus <- getInstalledLookAndFeels.find(_.getName == "Nimbus"))
-      setLookAndFeel(nimbus.getClassName)
-  }
+  class GeoServerBox extends GridBagPanel {
+    val urlLabel = new Label("Server URL")
+    val urlField =
+      new TextField("http://localhost:8080/geoserver/", 30)
+    val adminLabel = new Label("Admin user")
+    val adminField = new TextField("admin", 30)
+    val passwordLabel = new Label("Password")
+    val passwordField = new PasswordField(30)
+    val datadirLabel = new Label("Data directory")
+    val datadirField = new TextField("/var/lib/geoserver-data", 30)
+    val nsPrefixLabel = new Label("Namespace Prefix")
+    val nsPrefixField = new TextField("mn2gt", 30)
+    val nsUriLabel = new Label("Namespace URI")
+    val nsUriField = new TextField("http://example.com/mn2gt/", 30)
 
-  val sourceLabel = new swing.Label("Mapnik XML")
-  val outputLabel = new swing.Label("Output (SLD files)")
-  val source = new FileField
-  val output = new FileField
-  output.fileChooser.fileSelectionMode =
-    swing.FileChooser.SelectionMode.DirectoriesOnly
-  val runButton = new swing.Button("Convert!")
-  runButton.enabled = false
+    private val fields = 
+      Seq(
+        urlField,
+        adminField,
+        passwordField,
+        datadirField,
+        nsPrefixField,
+        nsUriField,
+        urlLabel,
+        adminLabel,
+        passwordLabel,
+        datadirLabel,
+        nsPrefixLabel,
+        nsUriLabel
+      )
 
-  locally {
-    import swing.Reactions.Reaction
-    import swing.event.ValueChanged
-    val handler: Reaction = {
-      case ValueChanged(f) =>
-        runButton.enabled =
-          source.textField.text.nonEmpty &&
-          output.textField.text.nonEmpty
+    listenTo(
+      urlField,
+      adminField,
+      passwordField,
+      datadirField,
+      nsPrefixField,
+      nsUriField
+    )
+
+    reactions += {
+      case event.EditDone(_) =>
+        for {
+          url <- Some(urlField.text) filter(_ nonEmpty)
+          user <- Some(adminField text) filter(_ nonEmpty)
+          password <- Some(passwordField password) filter(_ nonEmpty)
+          datadir <- Some(datadirField text) filter(_ nonEmpty)
+          nsPrefix <- Some(nsPrefixField text) filter(_ nonEmpty)
+          nsUri <- Some(nsUriField text) filter(_ nonEmpty)
+        } publish(ConnectionSpecified(GeoServerConnection(
+            url, user, password.mkString, datadir, nsPrefix, nsUri
+          )))
       case _ => ()
     }
-    source.textField.subscribe(handler)
-    output.textField.subscribe(handler)
+
+    override def enabled_=(b: Boolean) {
+      super.enabled = b
+      fields.foreach(_.enabled = b)
+    }
+
+    border = new swing.border.TitledBorder("GeoServer")
+    layout += (
+      urlLabel -> ((0, 0): Constraints),
+      urlField -> ((1, 0): Constraints),
+      adminLabel -> ((0, 1): Constraints),
+      adminField -> ((1, 1): Constraints),
+      passwordLabel -> ((0, 2): Constraints),
+      passwordField -> ((1, 2): Constraints),
+      datadirLabel -> ((0, 3): Constraints),
+      datadirField -> ((1, 3): Constraints),
+      nsPrefixLabel -> ((0, 4): Constraints),
+      nsPrefixField -> ((1, 4): Constraints),
+      nsUriLabel -> ((0, 5): Constraints),
+      nsUriField -> ((1, 5): Constraints)
+    )
   }
 
-  val sldConversionForm = new swing.GridBagPanel {
-    import swing.GridBagPanel.{ Anchor, Fill }
-    layout(sourceLabel) = new Constraints {
-      grid = (0, 0)
-      anchor = Anchor.West
-    }
-    layout(outputLabel) = new Constraints {
-      grid = (0, 2)
-      anchor = Anchor.West
-    }
-    layout(source) = new Constraints { 
-      grid = (0, 1)
-      fill = Fill.Horizontal
-      weightx = 1d
-    }
-    layout(output) = new Constraints { 
-      grid = (0, 3)
-      fill = Fill.Horizontal
-      weightx = 1d
-    }
-    layout(runButton) = new Constraints {
-      grid = (0, 4)
-      anchor = Anchor.LastLineEnd
-    }
-  }
-
-  val geoserverConfigurationForm = {
-    import swing.event._
-    import util.control.Exception.allCatch
-
-    val geoserverUrl = new swing.Label("URL")
-    val dataDir = new swing.Label("Data Directory (on Server)")
-    val userName = new swing.Label("Admin User")
-    val passwd = new swing.Label("Password")
-    val nsPrefix = new swing.Label("Namespace Prefix")
-    val nsURI = new swing.Label("Namespace URI")
-
-    val geoserverUrlField = new swing.TextField(30) {
-      inputVerifier = _ => allCatch.opt(new java.net.URL(text)).isDefined
-    }
-    
-    val dataDirField = new swing.TextField(30)
-    val userNameField = new swing.TextField(30)
-    val passwdField = new swing.PasswordField(30)
-    val nsPrefixField = new swing.TextField(30)
-    val nsURIField = new swing.TextField(30) {
-      inputVerifier = { _ =>
-        allCatch.opt(new java.net.URL(text))
-          .forall(_.getHost() != "localhost")
-      }
-    }
-    
-    val runButton = new swing.Button("Configure!!") {
-      enabled = false 
-      
-      listenTo(geoserverUrlField, dataDirField, userNameField, passwdField,
-        nsPrefixField, nsURIField)
-
-      reactions += {
-        case EditDone(_) =>
-          @inline def isUrl(x: swing.TextField): Boolean = 
-            try {
-              new java.net.URL(x.text); true
-            } catch {
-              case (_: java.net.MalformedURLException) => false
-            }
-            
-          val freeText =
-            Seq(dataDirField, userNameField, nsPrefixField)
-          enabled = (
-            freeText.forall(_.text.nonEmpty) & 
-            passwdField.password.nonEmpty &
-            isUrl(geoserverUrlField) &
-            isUrl(nsURIField)
-          )
-      }
-
-      action = swing.Action("Configure!!") {
-        // TODO: get some code in here to configure geoserver,
-        // but not on the swing dispatch thread
-      }
-    }
-
-    new swing.GridBagPanel {
-      import swing.GridBagPanel.{ Anchor, Fill }
-      border = new javax.swing.border.EmptyBorder(4, 4, 4, 4)
-      layout += (
-        geoserverUrl -> new Constraints { grid = (0, 0); anchor = Anchor.East },
-        dataDir -> new Constraints { grid = (0, 1); anchor = Anchor.East },
-        userName -> new Constraints { grid = (0, 2); anchor = Anchor.East },
-        passwd -> new Constraints { grid = (0, 3); anchor = Anchor.East },
-        nsPrefix -> new Constraints { grid = (0, 4); anchor = Anchor.East },
-        nsURI -> new Constraints { grid = (0, 5); anchor = Anchor.East }
+  class CommitBox extends GridBagPanel {
+    val go = Action("Convert!") {
+      Dialog.showMessage(
+        parent = this,
+        message = "Hello",
+        title = "Greeting"
       )
-      layout += (
-        geoserverUrlField -> (1, 0),
-        dataDirField -> (1, 1),
-        userNameField -> (1, 2),
-        passwdField -> (1, 3),
-        nsPrefixField -> (1, 4),
-        nsURIField -> (1, 5)
-      )
-      layout(runButton) =
-        new Constraints {
-          grid = (1, 6)
-          anchor = Anchor.LastLineEnd
-        }
     }
-  }
+    val button = new Button(go)
 
-  val tabs = new swing.TabbedPane {
-    pages += new swing.TabbedPane.Page(
-      "Generate SLD Files",
-      sldConversionForm,
-      "Write SLD files to local hard drive")
-    pages += new swing.TabbedPane.Page(
-      "Configure GeoServer", 
-      geoserverConfigurationForm,
-      "Configure a remote GeoServer via REST API")
-  }
-
-  trait Job {
-    def progressRange: (Int, Int)
-    def run(updateProgress: Int => Unit)
-  }
-
-  trait Converter {
-    import Mapnik2GeoTools._
-
-    val convert = new xml.transform.RuleTransformer(
-      FilterTransformer,
-      PointSymTransformer,
-      MarkersSymTransformer,
-      LineSymTransformer,
-      RasterSymTransformer
-    ) andThen (new xml.transform.RuleTransformer(RuleCleanup))
-  }
-
-  import java.io.File
-  class WriteSLDs(input: File, output: File) extends Job with Converter {
-    val original = xml.XML.load(input.getAbsolutePath)
-
-    val styleCount = (original \\ "Style").size
-    val progressRange = (0, styleCount)
-
-    val doc = convert(original)
-    val printer = new xml.PrettyPrinter(80, 2)
-
-    def writeStyle(style: xml.Node) {
-      val name = style.attributes.asAttrMap("name")
-      val wrapper = 
-        <StyledLayerDescriptor
-          version="1.0.0"
-          xmlns="http://www.opengis.net/sld"
-          xmlns:ogc="http://www.opengis.net/ogc"
-          xmlns:xlink="http://www.w3.org/1999/xlink"
-        >
-          <NamedLayer>
-            <Name>{name}</Name>
-            <UserStyle>
-              <Name>{name}</Name>
-              <FeatureTypeStyle>{style.child}</FeatureTypeStyle>
-            </UserStyle>
-          </NamedLayer>
-        </StyledLayerDescriptor>
-
-      val writer = new java.io.FileWriter(new File(output, name + ".sld"))
-      writer.write(printer.format(wrapper))
-      writer.close()
+    override def enabled_=(b: Boolean) = {
+      super.enabled = b
+      button.enabled = b
     }
 
-    def run(updateProgress: Int => Unit) {
-      for ((style, idx) <- (doc \\ "Style").zipWithIndex) {
-        writeStyle(style)
-        updateProgress(idx + 1)
+    layout += (
+      new Component {}  -> new Constraints {
+        grid = (0, 0)
+        weightx = 1
+        fill = Fill.Both
+      },
+      button -> new Constraints {
+        grid = (1, 0)
+        anchor = Anchor.LastLineEnd
       }
-    }
+    )
   }
-
-  class WriteSQLLoader(input: File, output: File) extends Job {
-    val selectPattern = """(?si:\(SELECT\s+(.*)\)\s+AS)""".r
-
-    val original = xml.XML.load(input.getAbsolutePath)
-
-    def params(datastore: xml.NodeSeq): Map[String, String] =
-      (datastore \ "Parameter").map(
-        p => (p.attributes.asAttrMap("name"), p.text)
-      )(collection.breakOut) 
-      
-    val layers = 
-      (original \\ "Layer") filter { lyr =>
-        params(lyr \ "Datasource") contains "table"
-      }
-
-    val progressRange = (0, layers.size)
-
-    def run(updateProgress: Int => Unit) {
-      val dataLayers =
-        for (layer <- layers; settings = params(layer)) yield {
-          val db = (settings("user"), settings("host"), settings("port"), settings("dbname"))
-          val name = layer.attributes.asAttrMap("name")
-          val table = settings("table")
-          (name, db, table)
-        }
-
-      val databases = dataLayers.groupBy(_._2)
-
-      val createStatementsByDB = 
-        databases.mapValues { tables =>
-          val createStatements =
-            for {
-              (name, db, table) <- tables
-              where <- selectPattern.findFirstMatchIn(table) map(_.group(1).trim)
-            } yield {
-              val cleanName = name.replaceAll("[\\s-]", "_")
-              Seq(
-                "CREATE TABLE " + cleanName + " AS SELECT " + where + ";",
-                "ALTER TABLE " + cleanName + " ADD COLUMN id SERIAL PRIMARY KEY;",
-                "INSERT INTO geometry_columns VALUES ( '', 'public', '" + cleanName + "', 'way', 2, 900913, 'GEOMETRY');",
-                "CREATE INDEX " + cleanName + "_idx ON " + cleanName + " USING GIST(way);"
-              ).mkString("%n".format())
-            }
-        }
-    }
-  }
-
-  override def main(args: Array[String]) = super.main(args)
-
+  
   def startup(args: Array[String]) {
-    val frame = new swing.MainFrame
     locally {
-      import frame._
+      import javax.swing.UIManager.{ getInstalledLookAndFeels, setLookAndFeel }
+      import collection.JavaConversions._
+      for (nimbus <- getInstalledLookAndFeels.find(_.getName == "Nimbus"))
+        setLookAndFeel(nimbus.getClassName)
+    }
 
-      runButton.subscribe {
-        case swing.event.ButtonClicked(`runButton`) =>
-          val preSize = size
-          val job = new WriteSLDs(
-            new java.io.File(source.textField.text),
-            new java.io.File(output.textField.text)
-          )
+    val input = new InputBox
+    val operation = new OperationBox
+    val output = new OutputBox
+    val geoserver = new GeoServerBox
+    val commit = new CommitBox 
 
-          val progress = new swing.ProgressBar
-          val (min, max) = job.progressRange
-          progress.min = min
-          progress.max = max
+    def enableAppropriateControls = {
+      commit.enabled = State.isValid
+      output.enabled = (State.mode == Local)
+      geoserver.enabled = (State.mode == Remote)
+    }
 
-          actors.Futures.future { 
-            job.run(prog => progress.value = prog)
-            // val sink = new FileSystem(new java.io.File(output.textField.text))
-            // val original = xml.XML.load(source.textField.text)
-            // val convert =
-            //   new xml.transform.RuleTransformer(
-            //     Mapnik2GeoTools.FilterTransformer
-            //   )
-            // val doc = convert(original)
-            // progress.max = (doc \\ "Style").size + (doc \\ "Layer").size
-            // for ((style, idx) <- (doc \\ "Style").zipWithIndex) {
-            //   sink.writeStyle(style)
-            //   progress.value = idx + 1
-            // }
-            // sink.writeLayers(doc \\ "Layer")
-            progress.value = progress.max
-          }
+    locally {
+      import scala.swing.event._
 
-          contents = new swing.FlowPanel(progress)
-          size = preSize
+      input.mapnikFileField.reactions += {
+        case ValueChanged(c: TextField) =>
+          State.mapnikFile = Some(new java.io.File(c.text))
+          enableAppropriateControls
+        case x => println(x)
+      }
+
+      operation.local.reactions += {
+        case ButtonClicked(_) => 
+          State.mode = Local
+          enableAppropriateControls
+        case _ => ()
+      }
+      
+      output.outputDirField.reactions += {
+        case ValueChanged(c: TextField) =>
+          State.outputDir = Some(new java.io.File(c.text))
+          enableAppropriateControls
         case _ => ()
       }
 
-      title = "Mapnik To GeoServer Translator"
-      contents = tabs // geoserverConfigurationForm
+      operation.publish.reactions += {
+        case ButtonClicked(_) =>
+          State.mode = Remote
+          enableAppropriateControls
+        case _ => ()
+      }
+
+      geoserver.reactions += {
+        case ConnectionSpecified(conn) =>
+          State.geoserverConnection = Some(conn)
+          enableAppropriateControls
+        case _ => ()
+      }
+    }
+
+    operation.local.selected = true
+    enableAppropriateControls
+
+    val frame = new MainFrame
+    locally { import frame._
+      title = "Mapnik → GeoServer Importer"
       visible = true
+      contents = {
+        val grid = new BoxPanel(Orientation.Vertical)
+        grid.contents += (
+          input,
+          operation,
+          output,
+          geoserver,
+          commit
+        )
+
+        grid
+      }
     }
   }
 }
