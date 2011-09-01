@@ -1,4 +1,5 @@
 package me.winslow.d.mn2gt
+import driver._
 
 import scala.swing._
 import javax.swing
@@ -7,29 +8,9 @@ object GUI extends SwingApplication {
 
   import GridBagPanel._
 
-  sealed trait Operation
-  case class LocalConversion(
-    mapnikFile: java.io.File,
-    outputDirectory: java.io.File
-  ) extends Operation
-
-  case class PublishToGeoServer(
-    mapnikFile: java.io.File,
-    connection: GeoServerConnection
-  ) extends Operation
-
   sealed trait OperationMode
   object Local extends OperationMode
   object Remote extends OperationMode
-
-  sealed case class GeoServerConnection(
-    url: String,
-    username: String,
-    password: String,
-    datadir: String,
-    namespacePrefix: String,
-    namespaceUri: String
-  )
 
   object State {
     var mapnikFile: Option[java.io.File] = None
@@ -39,8 +20,10 @@ object GUI extends SwingApplication {
 
     def isValid =
       mode match {
-        case Local => mapnikFile.isDefined && outputDir.isDefined
-        case Remote => mapnikFile.isDefined && geoserverConnection.isDefined
+        case Local =>
+          mapnikFile.isDefined && outputDir.isDefined
+        case Remote =>
+          mapnikFile.isDefined && geoserverConnection.isDefined
       }
 
     def job: Option[Operation] =
@@ -275,6 +258,15 @@ object GUI extends SwingApplication {
           State.geoserverConnection = Some(conn)
           enableAppropriateControls
         case _ => ()
+      }
+
+      commit.button.reactions += {
+        case ButtonClicked(_) =>
+          State.job foreach { job =>
+            actors.Futures.future {
+              job.run()
+            }
+          }
       }
     }
 

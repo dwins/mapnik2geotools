@@ -1,7 +1,6 @@
 package me.winslow.d.mn2gt
 
-import xml._
-import Mapnik2GeoTools._
+import driver._, xml._, Mapnik2GeoTools._
 
 object Driver {
   // quick n' dirty command line parser
@@ -28,42 +27,36 @@ object Driver {
         (switches, x +: args)
     }
 
-  def getSink(source: java.io.File, switches: Map[String, String]): Output = {
-    if (Set("rest", "datadir") subsetOf switches.keySet) {
-      new GeoServer(
-        switches("rest"),
-        switches.getOrElse("user", "admin"),
-        switches.getOrElse("password", "geoserver"),
-        switches("datadir"),
-        switches.getOrElse("prefix", "mn2gt"),
-        switches.getOrElse("namespace", "http://mn2gt.com/")
+  def getOperation(
+    source: java.io.File,
+    switches: Map[String, String]
+  ): Operation = {
+    if (Set("rest", "datadir") subsetOf switches.keySet)
+      PublishToGeoServer(
+        source,
+        GeoServerConnection(
+          switches("rest"),
+          switches.getOrElse("user", "admin"),
+          switches.getOrElse("password", "geoserver"),
+          switches("datadir"),
+          switches.getOrElse("prefix", "mn2gt"),
+          switches.getOrElse("namespace", "http://mn2gt.com/")
+        )
       )
-    } else {
-      val outname = switches.getOrElse("out", "output")
-      val outdir = new java.io.File(source.getParent(), outname)
-      new FileSystem(outdir)
-    }
+    else
+     LocalConversion(
+       source,
+       new java.io.File(
+         source.getParent(),
+         switches.getOrElse("output", "output")
+       )
+     )
   }
 
   def main(args: Array[String]) {
     val (switches, files) = parseOpts(args)
-    for (file <- files) {
-      val sink: Output = getSink(new java.io.File(file), switches)
-
-      val original = XML.load(file)
-      val convert =
-        new transform.RuleTransformer(
-          FilterTransformer,
-          PointSymTransformer,
-          MarkersSymTransformer,
-          LineSymTransformer,
-          PolygonSymTransformer,
-          RasterSymTransformer //,
-          // new TextSymTransformer(original \\ "FontSet")
-        ) andThen (new transform.RuleTransformer(RuleCleanup))
-      val doc = convert(original)
-      for (style <- doc \\ "Style") sink.writeStyle(style)
-      sink.writeLayers(doc \\ "Layer")
+    files.foreach { f => 
+      getOperation(new java.io.File(f), switches).run()
     }
   }
 }
