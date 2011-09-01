@@ -211,6 +211,19 @@ object GUI extends SwingApplication {
       }
     )
   }
+
+  class ProgressReporter(owner: Window) extends Dialog(owner) {
+    modal = true
+    title = "Converting..."
+    
+    val progress = new ProgressBar
+    progress.label = "Converting Mapnik style to GeoServer SLD..."
+    // progress.min = 0
+    // progress.max = 100
+    progress.indeterminate = true
+
+    contents = progress
+  }
   
   def startup(args: Array[String]) {
     locally {
@@ -220,6 +233,7 @@ object GUI extends SwingApplication {
         setLookAndFeel(nimbus.getClassName)
     }
 
+    val frame = new MainFrame
     val input = new InputBox
     val operation = new OperationBox
     val output = new OutputBox
@@ -272,18 +286,24 @@ object GUI extends SwingApplication {
 
       commit.button.reactions += {
         case ButtonClicked(_) =>
+          val reporter = new ProgressReporter(frame)
+          reporter.setLocationRelativeTo(frame)
           State.job foreach { job =>
             actors.Futures.future {
               job.run()
+              reporter.progress.indeterminate = false
+              reporter.progress.max = 1
+              reporter.progress.value = 1
+              // reporter.repaint
             }
           }
+          reporter.visible = true
       }
     }
 
     operation.local.selected = true
     enableAppropriateControls
 
-    val frame = new MainFrame
     locally { import frame._
       title = "Mapnik → GeoServer Importer"
       visible = true
