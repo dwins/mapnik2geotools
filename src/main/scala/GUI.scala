@@ -48,6 +48,15 @@ object GUI extends SwingApplication {
     val mapnikFileLabel = new Label("Mapnik XML")
     val mapnikFileField = new TextField(30)
     val fileChooserLauncher = new Button("Open...")
+    private val fileChooser = new FileChooser()
+    fileChooser.fileSelectionMode =
+      FileChooser.SelectionMode.FilesOnly
+
+    fileChooserLauncher.action = Action("Open...") {
+      if (fileChooser.showOpenDialog(this) == FileChooser.Result.Approve)
+        mapnikFileField.text = fileChooser.selectedFile.getAbsolutePath
+    }
+    
 
     border = new swing.border.TitledBorder("Input")
     enabled = false
@@ -80,6 +89,14 @@ object GUI extends SwingApplication {
     val outputDirLabel = new Label("SLD directory")
     val outputDirField = new TextField(30)
     val fileChooserLauncher = new Button("Open...")
+    private val fileChooser = new FileChooser()
+    fileChooser.fileSelectionMode =
+      FileChooser.SelectionMode.DirectoriesOnly
+
+    fileChooserLauncher.action = Action("Open...") {
+      if (fileChooser.showOpenDialog(this) == FileChooser.Result.Approve)
+        outputDirField.text = fileChooser.selectedFile.getAbsolutePath
+    }
 
     border = new swing.border.TitledBorder("Local Output")
 
@@ -175,14 +192,7 @@ object GUI extends SwingApplication {
   }
 
   class CommitBox extends GridBagPanel {
-    val go = Action("Convert!") {
-      Dialog.showMessage(
-        parent = this,
-        message = "Hello",
-        title = "Greeting"
-      )
-    }
-    val button = new Button(go)
+    val button = new Button("Convert!")
 
     override def enabled_=(b: Boolean) = {
       super.enabled = b
