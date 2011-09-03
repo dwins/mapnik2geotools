@@ -95,14 +95,14 @@ case class LocalConversion(
         where <- selectPattern.findFirstMatchIn(table) map(_.group(1).trim)
       } {
         val cleanName = name.replaceAll("[\\s-]", "_");
-        val wrapper =
-          """
-          CREATE TABLE """ + cleanName + """ AS SELECT """ + where + """;
-          ALTER TABLE """ + cleanName + """ ADD COLUMN id SERIAL PRIMARY KEY;;
-          INSERT INTO geometry_columns VALUES ( '', 'public', '""" + cleanName + """', 'way', 2, 900913, 'GEOMETRY');
-          CREATE INDEX """ + cleanName + """_idx ON """ + cleanName + """ USING GIST(way);
-          """
-        writer.write(wrapper)
+        val sql = Seq(
+          "CREATE OR REPLACE TABLE " + cleanName + " AS SELECT " + where + ";",
+          "ALTER TABLE " + cleanName + " ADD COLUMN id SERIAL PRIMARY KEY;",
+          "INSERT INTO geometry_columns VALUES ( '', 'public', '" + cleanName + "', 'way', 2, 900913, 'GEOMETRY');",
+          "CREATE INDEX " + cleanName + "_idx ON " + cleanName + " USING GIST(way);"
+        ).mkString("\n")
+        writer.write(sql)
+        writer.write("\n\n")
       }
       writer.write("VACUUM ANALYZE;")
       writer.close()
