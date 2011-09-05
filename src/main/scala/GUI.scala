@@ -117,7 +117,7 @@ object GUI extends SwingApplication {
   class GeoServerBox extends GridBagPanel {
     val urlLabel = new Label("Server URL")
     val urlField =
-      new TextField("http://localhost:8080/geoserver/", 30)
+      new TextField("http://localhost:8080/geoserver/rest", 30)
     val adminLabel = new Label("Admin user")
     val adminField = new TextField("admin", 30)
     val passwordLabel = new Label("Password")

@@ -123,7 +123,30 @@ case class PublishToGeoServer(
   mapnikFile: java.io.File,
   connection: GeoServerConnection
 ) extends Operation {
-  def run() {}
+  def run() {
+    val original = xml.XML.load(mapnikFile.getAbsolutePath)
+    val convert = 
+      new RuleTransformer(
+        FilterTransformer,
+        PointSymbolizerTransformer,
+        MarkersSymbolizerTransformer,
+        LineSymTransformer,
+        PolygonSymTransformer,
+        RasterSymTransformer,
+        new TextSymbolizerTransformer(original \\ "FontSet")
+      ) andThen (new RuleTransformer(
+        RuleCleanup, new URLResolver(new java.net.URL(connection.base))
+      ))
+
+    val converted = convert(original)
+    val styles = converted \\ "Style"
+    styles.foreach { s =>
+      writeStyle(s)
+      // TODO: Progress notification for GUI
+    }
+    val layers = converted \\ "Layer"
+    writeLayers(layers)
+  }
 
   def normalizeStyleName(name: String) = name.replaceAll("\\s+", "-")
 
