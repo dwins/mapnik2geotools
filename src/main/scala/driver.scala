@@ -123,6 +123,8 @@ case class PublishToGeoServer(
   mapnikFile: java.io.File,
   connection: GeoServerConnection
 ) extends Operation {
+  import java.net.URL
+
   def run() {
     val original = xml.XML.load(mapnikFile.getAbsolutePath)
     val convert = 
@@ -135,7 +137,9 @@ case class PublishToGeoServer(
         RasterSymTransformer,
         new TextSymbolizerTransformer(original \\ "FontSet")
       ) andThen (new RuleTransformer(
-        RuleCleanup, new URLResolver(new java.net.URL(connection.base))
+        RuleCleanup, new URLResolver(
+          new URL(new URL("file:"), connection.datadir)
+        )
       ))
 
     val converted = convert(original)
@@ -172,11 +176,6 @@ case class PublishToGeoServer(
   def writeStyle(style: Node) {
     val name = style.attribute("name").map(_.text).getOrElse("style")
     
-    val resolve = 
-      new xml.transform.RuleTransformer(
-        new URLResolver(new java.net.URL("file:" + connection.datadir))
-      )
-
     val wrapper =
       <StyledLayerDescriptor
         version="1.0.0"

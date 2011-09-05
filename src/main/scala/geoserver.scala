@@ -99,21 +99,6 @@ sealed case class GeoServerConnection(
       </dataStore>
   }
 
-  object URLResolver extends xml.transform.RewriteRule {
-    override def transform(n: Node): Seq[Node] = {
-      n match {
-        case e: Elem 
-          if e.label == "OnlineResource" && e.attributes.exists(_.key == "href")
-          => 
-            val link =
-              e.attributes.find(_.key == "href").get.value.head.text
-            val resolved = new java.net.URL(dataUrl, "styles/" + link)
-            <OnlineResource xlink:href={ resolved.toString }/>
-        case other => other
-      }
-    }
-  }
-
   def post(url: String, message: Node, mime: String = "application/xml") 
   : Int = {
     val request = new httpclient.methods.PostMethod(url)
