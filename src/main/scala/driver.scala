@@ -149,7 +149,7 @@ case class PublishToGeoServer(
       // TODO: Progress notification for GUI
     }
     connection.setWorkspace(connection.Workspace(
-      connection.namespacePrefix, connection.namespaceUri))
+      connection.namespacePrefix, connection.namespaceUri)).ensuring(Set(200, 201) contains _)
     val layers = converted \\ "Layer"
     writeLayers(layers)
   }
@@ -188,13 +188,13 @@ case class PublishToGeoServer(
           <UserStyle>
             <Name>{ name }</Name>
             <FeatureTypeStyle>
-              { style.child map resolve }
+              { style.child }
             </FeatureTypeStyle>
           </UserStyle>
         </NamedLayer>
       </StyledLayerDescriptor>
 
-    connection.setStyle(normalizeStyleName(name), wrapper)
+    connection.setStyle(normalizeStyleName(name), wrapper).ensuring(Set(200, 201) contains _)
   }
 
   def writeLayers(layers: NodeSeq) {
@@ -249,7 +249,7 @@ case class PublishToGeoServer(
 
     val databases = datalayers map(_._2) distinct
 
-    for (store <- databases) connection.setDataStore(workspace.prefix, store)
+    for (store <- databases) connection.setDataStore(workspace.prefix, store).ensuring(Set(200, 201) contains _)
 
     // OMG HACKS XXX
     def id(store: (String, _, String, _)): String =
@@ -259,7 +259,7 @@ case class PublishToGeoServer(
       //  store._3
 
     for (store @ (name, ds, table, styles) <- datalayers) {
-      connection.setFeatureType(id(store), workspace.prefix, ds.name, name)
+      connection.setFeatureType(id(store), workspace.prefix, ds.name, name).ensuring(Set(200, 201) contains _)
       connection.attachStyles(id(store).replaceAll("[\\s-]", "_"), styles)
     }
 
@@ -268,7 +268,7 @@ case class PublishToGeoServer(
         id(x).replaceAll("[\\s-]", "_"),
         x._4.map(normalizeStyleName)
       )}
-    )
+    ).ensuring(Set(200, 201) contains _)
   }
 }
 

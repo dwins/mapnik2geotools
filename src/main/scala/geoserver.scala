@@ -107,13 +107,12 @@ sealed case class GeoServerConnection(
         message.toString, mime, "utf-8"
       )
     )
-    val status = client.executeMethod(request)
-    if (!(200 to 299 contains status)) {
-      val body = 
-        io.Source.fromInputStream(request.getResponseBodyAsStream()).mkString
-      println("%s: (%d) %s".format(url, status, body))
-    }
-    status
+    lazy val body = 
+      io.Source.fromInputStream(request.getResponseBodyAsStream()).mkString
+    client.executeMethod(request).ensuring(
+      { _ == 201 },
+      "POST %s failed with message %s; was trying to send \n %s".format(url, body, message)
+    )
   }
 
   def put(url: String, message: Node, mime: String = "application/xml")
@@ -124,20 +123,19 @@ sealed case class GeoServerConnection(
         message.toString, mime, "utf-8"
       )
     )
-    val status = client.executeMethod(request)
-    if (!(200 to 299 contains status)) {
-      val body = 
-        io.Source.fromInputStream(request.getResponseBodyAsStream).mkString
-      println("%s: (%d) %s".format(url, status, body))
-    }
-    status
+    lazy val body =
+      io.Source.fromInputStream(request.getResponseBodyAsStream).mkString
+    client.executeMethod(request).ensuring(
+      { _ == 200 },
+      "PUT %s failed with message %s; was trying to send \n %s".format(url, body, message)
+    )
   }
 
   def addStyle(name: String, style: Node): Int = 
     post(
       base + "/styles?name=" + encode(name, "UTF-8"),
       style,
-      "application/vng.ogc.sld+xml"
+      "application/vnd.ogc.sld+xml"
     )
 
   def updateStyle(name: String, style: Node): Int =
@@ -157,7 +155,7 @@ sealed case class GeoServerConnection(
 
   def addDataStore(workspace: String, store: Store): Int =
     post(
-      base + "/workspaces/" + workspace + "/datastores/" + store.name,
+      base + "/workspaces/" + workspace + "/datastores",
       store.toXML
     )
 
@@ -167,13 +165,12 @@ sealed case class GeoServerConnection(
       store.toXML
     )
 
-  def setDataStore(workspace: String, store: Store): Int = {
-    val status = updateDataStore(workspace, store)
-    if (400 to 499 contains status) 
-      addDataStore(workspace, store)
-    else
-      status
-  }
+  def setDataStore(workspace: String, store: Store): Int =
+    try
+      updateDataStore(workspace, store)
+    catch {
+      case (ex: AssertionError) => addDataStore(workspace, store)
+    }
 
   def featureTypeXML(name: String, workspace: String, datastore: String, table: String): Node =
     <featureType>
@@ -202,11 +199,12 @@ sealed case class GeoServerConnection(
     )
 
   def setFeatureType(name: String, workspace: String, datastore: String, table: String): Int = {
-    val status = updateFeatureType(name, workspace, datastore, table)
-    if (400 to 499 contains status)
-      addFeatureType(name, workspace, datastore, table)
-    else
-      status
+    try 
+      updateFeatureType(name, workspace, datastore, table)
+    catch {
+      case (ex: AssertionError) =>
+        addFeatureType(name, workspace, datastore, table)
+    }
   }
 
   def attachStyles(typename: String, styles: Seq[String]): Int = {
@@ -253,13 +251,12 @@ sealed case class GeoServerConnection(
       layerGroupXML(name, layers)
     )
 
-  def setLayerGroup(name: String, layers: Seq[(String, Seq[String])]): Int = {
-    val status = updateLayerGroup(name, layers)
-    if (400 to 499 contains status)
-      addLayerGroup(name, layers)
-    else
-      status
-  }
+  def setLayerGroup(name: String, layers: Seq[(String, Seq[String])]): Int =
+    try 
+      updateLayerGroup(name, layers)
+    catch {
+      case (ex: AssertionError) => addLayerGroup(name, layers)
+    }
 
   private def workspaceXML(ws: Workspace) =
     <namespace>
