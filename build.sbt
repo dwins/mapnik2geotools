@@ -6,6 +6,8 @@ organization := "org.opengeo"
 
 scalaVersion := "2.9.0-1"
 
+fork in run := true
+
 resolvers += ScalaToolsSnapshots
 
 mainClass in Assembly := Some("me.winslow.d.mn2gt.GUI")
