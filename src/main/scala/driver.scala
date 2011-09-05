@@ -144,6 +144,8 @@ case class PublishToGeoServer(
       writeStyle(s)
       // TODO: Progress notification for GUI
     }
+    connection.setWorkspace(connection.Workspace(
+      connection.namespacePrefix, connection.namespaceUri))
     val layers = converted \\ "Layer"
     writeLayers(layers)
   }

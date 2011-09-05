@@ -275,4 +275,31 @@ sealed case class GeoServerConnection(
     else
       status
   }
+
+  private def workspaceXML(ws: Workspace) =
+    <namespace>
+      <prefix>{ws.prefix}</prefix>
+      <uri>{ws.uri}</uri>
+    </namespace>
+      
+
+  def addWorkspace(ws: Workspace): Int =
+    post(
+      base + "/namespaces/",
+      workspaceXML(ws)
+    )
+
+  def updateWorkspace(ws: Workspace): Int = 
+    put(
+      base + "/namespaces/" + ws.prefix + ".xml",
+      workspaceXML(ws)
+    )
+
+  def setWorkspace(ws: Workspace): Int = {
+    val status = updateWorkspace(ws)
+    if (400 to 499 contains status)
+      addWorkspace(ws)
+    else
+      status
+  }
 }
