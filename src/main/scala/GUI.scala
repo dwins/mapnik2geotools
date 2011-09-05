@@ -253,7 +253,7 @@ object GUI extends SwingApplication {
         case ValueChanged(c: TextField) =>
           State.mapnikFile = Some(new java.io.File(c.text))
           enableAppropriateControls
-        case x => println(x)
+        case _ => 
       }
 
       operation.local.reactions += {

@@ -3,7 +3,7 @@ package me.winslow.d.mn2gt
 import xml._
 import transform.RewriteRule
 
-object PointSymbolizerTransformer extends RewriteRule {
+object Mime {
   val knownMimeTypes = Map(
     "png" -> "image/png",
     "gif" -> "image/gif",
@@ -14,13 +14,17 @@ object PointSymbolizerTransformer extends RewriteRule {
   def identifyMimeType(extension: String): String =
     knownMimeTypes.getOrElse(extension, extension)
 
+  def guessMime(path: Option[String], mime: Option[String]): String =
+    mime.orElse(path.map { p => p.drop(1 + p.lastIndexOf('.')) } )
+      .map(identifyMimeType)
+      .getOrElse("image/png")
+}
+
+object PointSymbolizerTransformer extends RewriteRule {
   def convertPointSymbolizer(point: Elem): Node = {
     val attmap = point.attributes.asAttrMap
     val path = attmap.get("file")
-    val mimeType =
-      attmap.get("type")
-        .map(identifyMimeType)
-        .getOrElse("image/png")
+    val mimeType = Mime.guessMime(path, attmap.get("type"))
 
     val graphic = path.toSeq map { p =>
       <Graphic>

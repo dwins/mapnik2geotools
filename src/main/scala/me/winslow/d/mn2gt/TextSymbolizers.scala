@@ -130,13 +130,7 @@ class TextSymbolizerTransformer(fontsets: NodeSeq) extends RewriteRule {
         <ExternalGraphic>
           <OnlineResource xlink:href={ file }/>
           <Format>{
-            atts.getOrElse("type", "image/png") match {
-              case "png" => "image/png"
-              case "jpeg" => "image/jpeg"
-              case "gif" => "image/gif"
-              case "svg" => "image/svg"
-              case other => other
-            }
+            Mime.guessMime(atts.get("file"), atts.get("type"))
           }</Format>
         </ExternalGraphic>
         { for (height <- atts.get("height").toSeq) yield

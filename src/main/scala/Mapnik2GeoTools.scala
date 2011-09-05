@@ -32,12 +32,7 @@ object Mapnik2GeoTools {
       val attrs = e.attributes.asAttrMap
 
       val format =
-        attrs.getOrElse("type", "image/png") match {
-          case "png" => "image/png"
-          case "gif" => "image/gif"
-          case "jpeg" => "image/jpeg"
-          case other => other
-        }
+        Mime.guessMime(attrs.get("file"), attrs.get("type"))
 
       <PolygonSymbolizer>
         <Fill>
