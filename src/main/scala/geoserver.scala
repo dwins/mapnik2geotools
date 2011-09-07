@@ -39,7 +39,8 @@ sealed case class GeoServerConnection(
     user: String,
     host: String,
     port: String,
-    database: String
+    database: String,
+    dbpass: String
   ) extends Store {
     val name = database.replaceAll("[\\s-]", "_")
     val toXML =
@@ -53,6 +54,7 @@ sealed case class GeoServerConnection(
           <entry key="user">{ user }</entry>
           <entry key="host">{ host }</entry>
           <entry key="port">{ port }</entry>
+          <entry key="passwd">{ dbpass }</entry>
           <entry key="database">{ database }</entry>
           <entry key="namespace">{ workspace.uri }</entry>
           <entry key="dbtype">postgis</entry>
