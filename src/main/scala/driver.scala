@@ -228,7 +228,8 @@ case class PublishToGeoServer(
                   settings("user"),
                   settings("host"),
                   settings("port"),
-                  settings("dbname")
+                  settings("dbname"),
+                  settings("password")
                 )
 
               val table =
