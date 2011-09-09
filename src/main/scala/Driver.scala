@@ -43,14 +43,15 @@ object Driver {
           switches.getOrElse("namespace", "http://mn2gt.com/")
         )
       )
-    else
-     LocalConversion(
-       source,
-       new java.io.File(
-         source.getParent(),
-         switches.getOrElse("output", "output")
-       )
-     )
+    else {
+      val out = switches.get("output").map(new java.io.File(_))
+      val resolved = 
+        if (out forall (_ isAbsolute))
+          out.get
+        else
+          new java.io.File(source.getParent(), switches.getOrElse("output", "output"))
+      LocalConversion(source, resolved) 
+    }
   }
 
   def main(args: Array[String]) {
