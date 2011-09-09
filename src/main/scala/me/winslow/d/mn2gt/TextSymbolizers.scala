@@ -19,17 +19,20 @@ class TextSymbolizerTransformer(fontsets: NodeSeq) extends RewriteRule {
 
   private def extractLabel(atts: Map[String, String]) =
     <Label>
-      { for (
-          name <- atts.get("name").toSeq;
+      { for {
+          name <- atts.get("name").toSeq
           trimmed = name.replaceFirst("^\\[", "").replaceFirst("\\]$", "")
-        ) yield
-          { if (atts.get("text_convert") == Some("toupper"))
-              <ogc:Function name="strToUpperCase">
-                <ogc:PropertyName>{trimmed}</ogc:PropertyName>
-              </ogc:Function>
-            else
-              <ogc:PropertyName>{trimmed}</ogc:PropertyName>
-          }
+          prop = <ogc:PropertyName>{ trimmed }</ogc:PropertyName>
+        } yield
+          { atts.get("text-transform") match {
+              case Some("uppercase") => 
+                <ogc:Function name="strToUpperCase">{ prop }</ogc:Function>
+              case Some("lowercase") =>
+                <ogc:Function name="strToLowerCase">{ prop }</ogc:Function>
+              case Some("capitalize") =>
+                <ogc:Function name="strCapitalize">{ prop }</ogc:Function>
+              case _ => prop
+          }}
       }
     </Label>
 
@@ -62,13 +65,15 @@ class TextSymbolizerTransformer(fontsets: NodeSeq) extends RewriteRule {
           <ogc:Literal>0.5</ogc:Literal>
         </AnchorPointY>
       </AnchorPoint>
-      { for (dx <- atts.get("dx").toSeq; dy <- atts.get("dy").toSeq) yield
+      { val dx = atts.get("dx")
+        val dy = atts.get("dy")
+        if (dx.isDefined || dy.isDefined)
           <Displacement>
             <DisplacementX>
-              <ogc:Literal>{dx}</ogc:Literal>
+              <ogc:Literal>{ dx.getOrElse(0) }</ogc:Literal>
             </DisplacementX>
             <DisplacementY>
-              <ogc:Literal>{dy}</ogc:Literal>
+              <ogc:Literal>{ dy.getOrElse(0) }</ogc:Literal>
             </DisplacementY>
           </Displacement>
       }
@@ -87,13 +92,13 @@ class TextSymbolizerTransformer(fontsets: NodeSeq) extends RewriteRule {
     </LabelPlacement>
 
   private def extractHalo(atts: Map[String, String]) =
-    for (radius <- atts.get("halo_radius").toSeq) yield
+    for (radius <- atts.get("halo-radius").toSeq) yield
       <Halo>
         <Radius>
           <ogc:Literal>{ radius }</ogc:Literal>
         </Radius>
         {
-          val fill = atts.getOrElse("halo_fill", "#ffffff")
+          val fill = atts.getOrElse("halo-fill", "#ffffff")
           if (fill startsWith "#") {
             <Fill>
               <CssParameter name="fill">{fill}</CssParameter>
@@ -145,11 +150,11 @@ class TextSymbolizerTransformer(fontsets: NodeSeq) extends RewriteRule {
         "spacing" -> "minGroupDistance"
       )
 
-    for {
-      (mapnikName, gtName) <- knownParams
-      value <- atts.get(mapnikName)
-    } yield
-      <VendorOption name={gtName}>{ value }</VendorOption>
+    Seq(
+      atts.get("minimum-distance").map(x => <spaceAround>{x}</spaceAround>),
+      atts.get("spacing").map(x => <minGroupDistance>{x}</minGroupDistance>),
+      atts.get("wrap-width").map(x => <autoWrap>{x.toInt * 5}</autoWrap>)
+    ).flatten
   }
 
   def convertTextSymbolizer(text: Elem): Node = {
