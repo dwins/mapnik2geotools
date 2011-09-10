@@ -200,38 +200,38 @@ sealed case class GeoServerConnection(
       case (ex: AssertionError) => addDataStore(workspace, store)
     }
 
-  def featureTypeXML(name: String, workspace: String, datastore: String, table: String): Node =
+  def featureTypeXML(name: String, store: Store): Node =
     <featureType>
       <name>{ name.replaceAll("[\\s-]", "_") }</name>
       <nativeName>{ name.replaceAll("[\\s-]", "_") }</nativeName>
       <namespace>
-        <name>{ workspace }</name>
+        <name>{ store.workspace.prefix }</name>
       </namespace>
       <title>{ name }</title>
       <srs>EPSG:900913</srs>
       <enabled>true</enabled>
-      <store class="dataStore"><name>{ datastore }</name></store>
+      <store class="dataStore"><name>{ store.name }</name></store>
     </featureType>
 
-  def addFeatureType(name: String, workspace: String, datastore: String, table: String): Int =
+  def addFeatureType(name: String, store: Store): Int =
     post(
-      "%s/workspaces/%s/datastores/%s/featuretypes/".format(base, workspace, datastore),
-      featureTypeXML(name, workspace, datastore, table)
+      "%s/workspaces/%s/datastores/%s/featuretypes/"
+        .format(base, store.workspace.prefix, store.name),
+      featureTypeXML(name, store)
     )
 
-  def updateFeatureType(name: String, workspace: String, datastore: String, table: String): Int =
+  def updateFeatureType(name: String, store: Store): Int =
     put(
       "%s/workspaces/%s/datastores/%s/featuretypes/%s.xml"
-        .format(base, workspace, datastore, name),
-      featureTypeXML(name, workspace, datastore, table)
+        .format(base, store.workspace.prefix, store.name, name),
+      featureTypeXML(name, store)
     )
 
-  def setFeatureType(name: String, workspace: String, datastore: String, table: String): Int = {
+  def setFeatureType(name: String, store: Store): Int = {
     try 
-      updateFeatureType(name, workspace, datastore, table)
+      updateFeatureType(name, store)
     catch {
-      case (ex: AssertionError) =>
-        addFeatureType(name, workspace, datastore, table)
+      case (ex: AssertionError) => addFeatureType(name, store)
     }
   }
 

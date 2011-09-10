@@ -301,7 +301,7 @@ case class PublishToGeoServer(
       //  store._3
 
     for (store @ (name, ds, table, styles) <- datalayers) {
-      connection.setFeatureType(id(store), workspace.prefix, ds.name, name).ensuring(Set(200, 201) contains _)
+      connection.setFeatureType(id(store), ds).ensuring(Set(200, 201) contains _)
       connection.attachStyles(id(store).replaceAll("[\\s-]", "_"), styles)
     }
 
