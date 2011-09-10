@@ -7,13 +7,15 @@ trait LabelHandling {
   def fonts: Map[String, Seq[String]]
 }
 
-class TextSymbolizerTransformer(fontsets: NodeSeq) extends RewriteRule {
+trait TextProperties {
+  def fontsets: NodeSeq
+
   val fonts: Map[String, Seq[String]] =
     (
       for {
         fset <- fontsets
         name = fset.attributes.asAttrMap("name")
-        faces = fset \\ "@face_name" map(_.text)
+        faces = fset \\ "@face-name" map(_.text)
       } yield { name -> faces }
     ) toMap
 
@@ -144,16 +146,10 @@ class TextSymbolizerTransformer(fontsets: NodeSeq) extends RewriteRule {
       </Graphic>
 
   def extractVendorParams(atts: Map[String, String]) = {
-    val knownParams =
-      Seq(
-        "min_distance" -> "spaceAround",
-        "spacing" -> "minGroupDistance"
-      )
-
     Seq(
-      atts.get("minimum-distance").map(x => <spaceAround>{x}</spaceAround>),
-      atts.get("spacing").map(x => <minGroupDistance>{x}</minGroupDistance>),
-      atts.get("wrap-width").map(x => <autoWrap>{x.toInt * 5}</autoWrap>)
+      atts.get("minimum-distance").map(x => <VendorOption name="spaceAround">{x}</VendorOption>),
+      atts.get("spacing").map(x => <VendorOption name="minGroupDistance">{x}</VendorOption>),
+      atts.get("wrap-width").map(x => <VendorOption name="autoWrap">{x.toInt * 5}</VendorOption>)
     ).flatten
   }
 
@@ -192,7 +188,11 @@ class TextSymbolizerTransformer(fontsets: NodeSeq) extends RewriteRule {
       { extractVendorParams(attmap) }
     </TextSymbolizer>
   }
+}
 
+class TextSymbolizerTransformer(val fontsets: NodeSeq)
+extends RewriteRule with TextProperties
+{
   override def transform(node: Node): Seq[Node] =
     node match {
       case e: Elem if e.label == "TextSymbolizer" =>
