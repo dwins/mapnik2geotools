@@ -86,6 +86,13 @@ case class LocalConversion(
         (name, db, table, styles)
       }
 
+    val rasterLayers = 
+      for {
+        layer <- layers
+        settings = params(layer \ "Datasource")
+        if settings("type") == "raster"
+      } yield settings
+
     val databases = datalayers map(_._2) distinct
 
     for (database <- databases) {
@@ -110,12 +117,36 @@ case class LocalConversion(
       writer.close()
     }
 
-    val writer = new java.io.FileWriter(new java.io.File(outputDirectory, "loader.sh"))
-    for ((user, host, port, name) <- databases)
-      writer.write(
-        "psql -U"+user+" -h"+host+" -p"+port+" -d"+name+" -f"+name+".sql\n"
-      )
-    writer.close()
+    locally {
+      val writer = 
+        new java.io.FileWriter(
+          new java.io.File(outputDirectory, "loader.sh")
+        )
+      for ((user, host, port, name) <- databases)
+        writer.write(
+          "psql -U"+user+" -h"+host+" -p"+port+" -d"+name+" -f"+name+".sql\n"
+        )
+      writer.close()
+    }
+
+    locally {
+      val writer = 
+        new java.io.FileWriter(
+          new java.io.File(outputDirectory, "fixtiffs.sh")
+        )
+      for (settings <- rasterLayers) {
+        val chunks = Seq(
+          "gdal_translate -of GTiff",
+          "-a_ullr %s %s %s %s".format(
+            Seq("lox", "hiy", "hix", "loy").map(settings): _*),
+          "%1$s %1$s".format(settings("file"))
+        )
+
+        writer.write(chunks.mkString(" "))
+        writer.write("\n")
+      }
+      writer.close()
+    }
   }
 }
 
@@ -198,7 +229,7 @@ case class PublishToGeoServer(
   }
 
   def writeLayers(layers: NodeSeq) {
-    import connection.{ ShapefileStore, PostgisStore };
+    import connection.{ ShapefileStore, PostgisStore, GeoTIFFStore };
 
     def params(datastore: NodeSeq): Map[String, String] =
       datastore \ "Parameter" map {
@@ -209,6 +240,16 @@ case class PublishToGeoServer(
     val workspace = new connection.Workspace(
       connection.namespacePrefix, connection.namespaceUri
     )
+
+    val rasterLayers =
+      for {
+        layer <- layers
+        settings = params(layer \ "Datasource")
+        storeType <- settings.get("type")
+        if "raster" == storeType
+      } yield {
+        GeoTIFFStore(settings("file"), workspace)
+      }
 
     val datalayers =
       for {
@@ -250,7 +291,7 @@ case class PublishToGeoServer(
 
     val databases = datalayers map(_._2) distinct
 
-    for (store <- databases) connection.setDataStore(workspace.prefix, store).ensuring(Set(200, 201) contains _)
+    for (store <- databases ++ rasterLayers) connection.setDataStore(workspace.prefix, store).ensuring(Set(200, 201) contains _)
 
     // OMG HACKS XXX
     def id(store: (String, _, String, _)): String =

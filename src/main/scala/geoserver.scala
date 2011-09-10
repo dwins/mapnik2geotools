@@ -29,10 +29,14 @@ sealed case class GeoServerConnection(
   case class Workspace(prefix: String, uri: String)
 
   trait Store {
+    def dataType: String
     def workspace: Workspace
     def name: String
     def toXML: Node
   }
+
+  trait DataStore extends Store { val dataType = "datastores" }
+  trait CoverageStore extends Store { val dataType = "coveragestores" }
 
   case class PostgisStore(
     workspace: Workspace,
@@ -41,7 +45,7 @@ sealed case class GeoServerConnection(
     port: String,
     database: String,
     dbpass: String
-  ) extends Store {
+  ) extends DataStore {
     val name = database.replaceAll("[\\s-]", "_")
     val toXML =
       <dataStore>
@@ -75,7 +79,7 @@ sealed case class GeoServerConnection(
   case class ShapefileStore(
     workspace: Workspace,
     file: String
-  ) extends Store {
+  ) extends DataStore {
     val name = file
         .drop(file.lastIndexOf("/") + 1)
         .replaceAll("[\\s-]", "_")
@@ -99,6 +103,27 @@ sealed case class GeoServerConnection(
           <entry key="namespace">{ workspace.uri }</entry>
         </connectionParameters>
       </dataStore>
+  }
+
+  case class GeoTIFFStore(
+    path: String,
+    workspace: Workspace
+  ) extends CoverageStore {
+    val name = path
+        .drop(path.lastIndexOf("/") + 1)
+        .replaceAll("[\\s-]", "_")
+        .replaceAll("(?i).tiff?$","")
+
+    def toXML = 
+      <coverageStore>
+        <name>{ name }</name>
+        <type>GeoTIFF</type>
+        <enabled>true</enabled>
+        <workspace>
+          <name>{ workspace.prefix }</name>
+        </workspace>
+        <url>file:data/{ path }</url>
+      </coverageStore>
   }
 
   def post(url: String, message: Node, mime: String = "application/xml") 
@@ -157,13 +182,14 @@ sealed case class GeoServerConnection(
 
   def addDataStore(workspace: String, store: Store): Int =
     post(
-      base + "/workspaces/" + workspace + "/datastores",
+      "%s/workspaces/%s/%s".format(base, workspace, store.dataType),
       store.toXML
     )
 
   def updateDataStore(workspace: String, store: Store): Int =
     put(
-      base + "/workspaces/" + workspace + "/datastores/" + store.name,
+      "%s/workspaces/%s/%s/%s".format(
+        base, workspace, store.dataType, store.name),
       store.toXML
     )
 
