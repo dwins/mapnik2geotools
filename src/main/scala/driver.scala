@@ -251,7 +251,8 @@ case class PublishToGeoServer(
         if "raster" == storeType
         store = GeoTIFFStore(settings("file"), workspace)
         dataset = Coverage(store.name, store)
-      } yield (store, dataset)
+        styles = layer \ "StyleName" map(s => normalizeStyleName(s.text))
+      } yield (store, dataset, styles)
 
     val datalayers =
       for {
@@ -295,13 +296,15 @@ case class PublishToGeoServer(
 
     for (store <- databases ++ rasterLayers.map(_._1)) connection.setDataStore(workspace.prefix, store).ensuring(Set(200, 201) contains _)
 
-    for ((name, ds, _, styles) <- datalayers) {
-      connection.setData(FeatureType(name, ds)).ensuring(Set(200, 201) contains _)
-      connection.attachStyles(name.replaceAll("[\\s-]", "_"), styles)
+    for ((name, ds, _, styles) <- datalayers; ft = FeatureType(name, ds)) {
+      connection.setData(ft).ensuring(Set(200, 201) contains _)
+      connection.attachStyles(ft, styles)
     }
 
-    for ((_, layer) <- rasterLayers) 
+    for ((_, layer, styles) <- rasterLayers) {
       connection.setData(layer).ensuring(Set(200, 201) contains _)
+      connection.attachStyles(layer, styles)
+    }
 
     connection.setLayerGroup(connection.namespacePrefix, 
       datalayers map { case (name, _, _, styles) => (

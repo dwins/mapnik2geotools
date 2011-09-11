@@ -206,23 +206,27 @@ sealed case class GeoServerConnection(
     }
 
   trait DataSet {
-    def cleanName: String
+    def name: String
     def store: Store
     def datasetType: String
+    def layerType: String
+    def resourceType: String
     def toXML: xml.Node
   }
 
   case class FeatureType(
-    name: String,
+    rawName: String,
     store: DataStore
   ) extends DataSet {
-    def cleanName = name.replaceAll("[\\s-]", "_")
+    def name = rawName.replaceAll("[\\s-]", "_")
     val datasetType = "featuretypes"
+    val layerType = "VECTOR"
+    val resourceType = "featureType"
     def toXML =
       <featureType>
-        <name>{ cleanName }</name>
-        <nativeName>{ cleanName }</nativeName>
-        <title>{ name }</title>
+        <name>{ name }</name>
+        <nativeName>{ name }</nativeName>
+        <title>{ rawName }</title>
         <namespace>
           <name>{ store.workspace.prefix }</name>
         </namespace>
@@ -233,20 +237,22 @@ sealed case class GeoServerConnection(
   }
 
   case class Coverage(
-    name: String,
+    rawName: String,
     store: CoverageStore
   ) extends DataSet {
-    def cleanName = name.replaceAll("[\\s-]", "_")
+    def name = rawName.replaceAll("[\\s-]", "_")
     val datasetType = "coverages"
+    val layerType = "RASTER"
+    val resourceType = "coverage"
     def toXML =
       <coverage>
-        <name>{ cleanName }</name>
-        <nativeName>{ cleanName }</nativeName>
+        <name>{ name }</name>
+        <nativeName>{ name }</nativeName>
         <namespace>
           <name>{ store.workspace.prefix }</name>
         </namespace>
-        <title>{ name }</title>
-        <description>Autoconfiguref by mapnik2geotools</description>
+        <title>{ rawName }</title>
+        <description>Autoconfigured by mapnik2geotools</description>
         <srs>EPSG:900913</srs>
         <projectionPolicy>FORCE_DECLARED</projectionPolicy>
         <enabled>true</enabled>
@@ -281,7 +287,7 @@ sealed case class GeoServerConnection(
   def updateData(d: DataSet): Int =
     put(
       Seq(base, "workspaces", d.store.workspace.prefix, d.store.dataType,
-        d.store.name, d.datasetType, d.cleanName + ".xml"
+        d.store.name, d.datasetType, d.name + ".xml"
       ).mkString("/"),
       d.toXML
     )
@@ -293,19 +299,24 @@ sealed case class GeoServerConnection(
       case (ex: AssertionError) => addData(d)
     }
 
-  def attachStyles(typename: String, styles: Seq[String]): Int = {
+  def attachStyles(data: DataSet, styles: Seq[String]): Int = {
     val message =
       <layer>
-        <name>{ typename }</name>
-        <type>VECTOR</type>
+        <name>{ data.name }</name>
+        <type>{ data.layerType }</type>
+        <defaultStyle>
+          <name>{ styles.head }</name>
+        </defaultStyle>
         <styles>
           { for (s <- styles) yield <style><name>{s}</name></style> }
         </styles>
-        <resource class="featureType"><name>{ typename }</name></resource>
+        <resource class={data.resourceType}>
+          <name>{ data.name }</name>
+        </resource>
         <enabled>true</enabled>
       </layer>
 
-    put(base + "/layers/" + typename, message)
+    put(base + "/layers/" + data.name, message)
   }
 
   def layerGroupXML(name: String, layers: Seq[(String, Seq[String])]) =
