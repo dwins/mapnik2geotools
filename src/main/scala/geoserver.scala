@@ -178,11 +178,11 @@ sealed case class GeoServerConnection(
     )
 
   def setStyle(name: String, style: Node): Int = {
-    val status = updateStyle(name, style)
-    if (400 to 499 contains status)
-      addStyle(name, style)
-    else
-      status
+    try 
+      updateStyle(name, style)
+    catch {
+      case _ => addStyle(name, style)
+    }
   }
 
   def addDataStore(workspace: String, store: Store): Int =
@@ -319,36 +319,36 @@ sealed case class GeoServerConnection(
     put(base + "/layers/" + data.name, message)
   }
 
-  def layerGroupXML(name: String, layers: Seq[(String, Seq[String])]) =
+  def layerGroupXML(name: String, layers: Seq[(String, String)]) =
     <layerGroup>
       <name>{ name }</name>
       <layers>
         {
-          for ((layer, styles) <- layers; _ <- styles)
-          yield <layer><name>{ layer }</name></layer>
+          for ((layer, _) <- layers) yield 
+            <layer><name>{ layer }</name></layer>
         }
       </layers>
       <styles>
         {
-          for ((_, styles) <- layers; style <- styles)
-          yield <style><name>{ style }</name></style>
+          for ((_, style) <- layers) yield 
+          <style><name>{ style }</name></style>
         }
       </styles>
     </layerGroup>
 
-  def addLayerGroup(name: String, layers: Seq[(String, Seq[String])]): Int =
+  def addLayerGroup(name: String, layers: Seq[(String, String)]): Int =
     post(
       base + "/layergroups/",
       layerGroupXML(name, layers)
     )
 
-  def updateLayerGroup(name: String, layers: Seq[(String, Seq[String])]): Int = 
+  def updateLayerGroup(name: String, layers: Seq[(String, String)]): Int = 
     put(
       base + "/layergroups/" + name + ".xml",
       layerGroupXML(name, layers)
     )
 
-  def setLayerGroup(name: String, layers: Seq[(String, Seq[String])]): Int =
+  def setLayerGroup(name: String, layers: Seq[(String, String)]): Int =
     try 
       updateLayerGroup(name, layers)
     catch {
@@ -375,10 +375,10 @@ sealed case class GeoServerConnection(
     )
 
   def setWorkspace(ws: Workspace): Int = {
-    val status = updateWorkspace(ws)
-    if (400 to 499 contains status)
-      addWorkspace(ws)
-    else
-      status
+    try 
+      updateWorkspace(ws)
+    catch {
+      case _ => addWorkspace(ws)
+    }
   }
 }

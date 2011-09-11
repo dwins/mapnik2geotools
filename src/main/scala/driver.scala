@@ -230,7 +230,8 @@ case class PublishToGeoServer(
 
   def writeLayers(layers: NodeSeq) {
     import connection.{
-      ShapefileStore, PostgisStore, GeoTIFFStore, FeatureType, Coverage
+      Store, DataSet, FeatureType, Coverage,
+      ShapefileStore, PostgisStore, GeoTIFFStore
     }
 
     def params(datastore: NodeSeq): Map[String, String] =
@@ -243,29 +244,20 @@ case class PublishToGeoServer(
       connection.namespacePrefix, connection.namespaceUri
     )
 
-    val rasterLayers =
+    val datalayers: Seq[(Store, DataSet, Seq[String])] =
       for {
         layer <- layers
         settings = params(layer \ "Datasource")
         storeType <- settings.get("type")
-        if "raster" == storeType
-        store = GeoTIFFStore(settings("file"), workspace)
-        dataset = Coverage(store.name, store)
         styles = layer \ "StyleName" map(s => normalizeStyleName(s.text))
-      } yield (store, dataset, styles)
-
-    val datalayers =
-      for {
-        layer <- layers
-        settings = params(layer \ "Datasource")
-        storeType <- settings.get("type")
-        if Set("shape","postgis") contains storeType
+        if Set("shape","postgis", "raster") contains storeType
       } yield {
-        val (datastore, table) =
+        val (datastore, dataset) =
           storeType match {
             case "shape" =>
               val store = ShapefileStore(workspace, settings("file"))
-              (store, store.name)
+              val data = FeatureType(store.name, store)
+              (store, data)
             case "postgis" =>
               val store =
                 PostgisStore(
@@ -283,34 +275,35 @@ case class PublishToGeoServer(
                 else
                   settings("table")
 
-              (store, table)
+              val ft = FeatureType(table, store)
+              (store, ft)
+            case "raster" =>
+              val store = GeoTIFFStore(settings("file"), workspace)
+              val data = Coverage(store.name, store)
+              (store, data)
           }
 
-        val name = layer.attributes.asAttrMap("name")
-        val styles = layer \ "StyleName" map(s => normalizeStyleName(s.text))
-
-        (table.replaceAll("[\\s-]", "_"), datastore, table, styles)
+        (datastore, dataset, styles)
       }
 
-    val databases = datalayers map(_._2) distinct
+    val databases = datalayers map(_._1) distinct
 
-    for (store <- databases ++ rasterLayers.map(_._1)) connection.setDataStore(workspace.prefix, store).ensuring(Set(200, 201) contains _)
+    for (store <- databases)
+      connection.setDataStore(workspace.prefix, store).ensuring(Set(200, 201) contains _)
 
-    for ((name, ds, _, styles) <- datalayers; ft = FeatureType(name, ds)) {
-      connection.setData(ft).ensuring(Set(200, 201) contains _)
-      connection.attachStyles(ft, styles)
+    for ((_, data, styles) <- datalayers) {
+      connection.setData(data).ensuring(Set(200, 201) contains _)
+      connection.attachStyles(data, styles)
     }
 
-    for ((_, layer, styles) <- rasterLayers) {
-      connection.setData(layer).ensuring(Set(200, 201) contains _)
-      connection.attachStyles(layer, styles)
-    }
+    val styledLayers = 
+      for {
+        (_, layer, styles) <- datalayers
+        style <- styles
+      } yield (layer.name, style)
 
-    connection.setLayerGroup(connection.namespacePrefix, 
-      datalayers map { case (name, _, _, styles) => (
-        name.replaceAll("[\\s-]", "_"), styles.map(normalizeStyleName)
-      )}
-    ).ensuring(Set(200, 201) contains _)
+    connection.setLayerGroup(connection.namespacePrefix, styledLayers)
+      .ensuring(Set(200, 201) contains _)
   }
 }
 
