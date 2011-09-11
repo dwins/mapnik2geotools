@@ -200,38 +200,45 @@ sealed case class GeoServerConnection(
       case (ex: AssertionError) => addDataStore(workspace, store)
     }
 
-  def featureTypeXML(name: String, store: Store): Node =
-    <featureType>
-      <name>{ name.replaceAll("[\\s-]", "_") }</name>
-      <nativeName>{ name.replaceAll("[\\s-]", "_") }</nativeName>
-      <namespace>
-        <name>{ store.workspace.prefix }</name>
-      </namespace>
-      <title>{ name }</title>
-      <srs>EPSG:900913</srs>
-      <enabled>true</enabled>
-      <store class="dataStore"><name>{ store.name }</name></store>
-    </featureType>
+  case class FeatureType(
+    name: String,
+    store: Store
+  ) {
+    def cleanName = name.replaceAll("[\\s-]", "_")
+    def toXML =
+      <featureType>
+        <name>{ cleanName }</name>
+        <nativeName>{ cleanName }</nativeName>
+        <title>{ name }</title>
+        <namespace>
+          <name>{ store.workspace.prefix }</name>
+        </namespace>
+        <srs>EPSG:900913</srs>
+        <enabled>true</enabled>
+        <store class="dataStore"><name>{ store.name }</name></store>
+      </featureType>
+  }
 
-  def addFeatureType(name: String, store: Store): Int =
+  def addFeatureType(featuretype: FeatureType): Int =
     post(
       "%s/workspaces/%s/datastores/%s/featuretypes/"
-        .format(base, store.workspace.prefix, store.name),
-      featureTypeXML(name, store)
+        .format(base, featuretype.store.workspace.prefix,
+          featuretype.store.name),
+      featuretype.toXML
     )
 
-  def updateFeatureType(name: String, store: Store): Int =
+  def updateFeatureType(featuretype: FeatureType): Int =
     put(
       "%s/workspaces/%s/datastores/%s/featuretypes/%s.xml"
-        .format(base, store.workspace.prefix, store.name, name),
-      featureTypeXML(name, store)
+        .format(base, featuretype.store.workspace.prefix, featuretype.store.name, featuretype.cleanName),
+      featuretype.toXML
     )
 
-  def setFeatureType(name: String, store: Store): Int = {
+  def setFeatureType(featuretype: FeatureType): Int = {
     try 
-      updateFeatureType(name, store)
+      updateFeatureType(featuretype)
     catch {
-      case (ex: AssertionError) => addFeatureType(name, store)
+      case (ex: AssertionError) => addFeatureType(featuretype)
     }
   }
 

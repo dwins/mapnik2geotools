@@ -229,7 +229,9 @@ case class PublishToGeoServer(
   }
 
   def writeLayers(layers: NodeSeq) {
-    import connection.{ ShapefileStore, PostgisStore, GeoTIFFStore };
+    import connection.{
+      ShapefileStore, PostgisStore, GeoTIFFStore, FeatureType
+    }
 
     def params(datastore: NodeSeq): Map[String, String] =
       datastore \ "Parameter" map {
@@ -293,22 +295,14 @@ case class PublishToGeoServer(
 
     for (store <- databases ++ rasterLayers) connection.setDataStore(workspace.prefix, store).ensuring(Set(200, 201) contains _)
 
-    // OMG HACKS XXX
-    def id(store: (String, _, String, _)): String =
-      //if (selectPattern.findFirstMatchIn(store._3).isDefined)
-        store._1
-      //else
-      //  store._3
-
-    for (store @ (name, ds, table, styles) <- datalayers) {
-      connection.setFeatureType(id(store), ds).ensuring(Set(200, 201) contains _)
-      connection.attachStyles(id(store).replaceAll("[\\s-]", "_"), styles)
+    for ((name, ds, _, styles) <- datalayers) {
+      connection.setFeatureType(FeatureType(name, ds)).ensuring(Set(200, 201) contains _)
+      connection.attachStyles(name.replaceAll("[\\s-]", "_"), styles)
     }
 
     connection.setLayerGroup(connection.namespacePrefix, 
-      datalayers map { x => (
-        id(x).replaceAll("[\\s-]", "_"),
-        x._4.map(normalizeStyleName)
+      datalayers map { case (name, _, _, styles) => (
+        name.replaceAll("[\\s-]", "_"), styles.map(normalizeStyleName)
       )}
     ).ensuring(Set(200, 201) contains _)
   }
