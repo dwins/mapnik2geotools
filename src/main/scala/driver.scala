@@ -230,7 +230,7 @@ case class PublishToGeoServer(
 
   def writeLayers(layers: NodeSeq) {
     import connection.{
-      ShapefileStore, PostgisStore, GeoTIFFStore, FeatureType
+      ShapefileStore, PostgisStore, GeoTIFFStore, FeatureType, Coverage
     }
 
     def params(datastore: NodeSeq): Map[String, String] =
@@ -249,9 +249,9 @@ case class PublishToGeoServer(
         settings = params(layer \ "Datasource")
         storeType <- settings.get("type")
         if "raster" == storeType
-      } yield {
-        GeoTIFFStore(settings("file"), workspace)
-      }
+        store = GeoTIFFStore(settings("file"), workspace)
+        dataset = Coverage(store.name, store)
+      } yield (store, dataset)
 
     val datalayers =
       for {
@@ -293,12 +293,15 @@ case class PublishToGeoServer(
 
     val databases = datalayers map(_._2) distinct
 
-    for (store <- databases ++ rasterLayers) connection.setDataStore(workspace.prefix, store).ensuring(Set(200, 201) contains _)
+    for (store <- databases ++ rasterLayers.map(_._1)) connection.setDataStore(workspace.prefix, store).ensuring(Set(200, 201) contains _)
 
     for ((name, ds, _, styles) <- datalayers) {
-      connection.setFeatureType(FeatureType(name, ds)).ensuring(Set(200, 201) contains _)
+      connection.setData(FeatureType(name, ds)).ensuring(Set(200, 201) contains _)
       connection.attachStyles(name.replaceAll("[\\s-]", "_"), styles)
     }
+
+    for ((_, layer) <- rasterLayers) 
+      connection.setData(layer).ensuring(Set(200, 201) contains _)
 
     connection.setLayerGroup(connection.namespacePrefix, 
       datalayers map { case (name, _, _, styles) => (

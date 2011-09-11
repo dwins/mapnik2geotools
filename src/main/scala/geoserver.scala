@@ -35,8 +35,13 @@ sealed case class GeoServerConnection(
     def toXML: Node
   }
 
-  trait DataStore extends Store { val dataType = "datastores" }
-  trait CoverageStore extends Store { val dataType = "coveragestores" }
+  trait DataStore extends Store {
+    val dataType = "datastores"
+  }
+
+  trait CoverageStore extends Store { 
+    val dataType = "coveragestores"
+  }
 
   case class PostgisStore(
     workspace: Workspace,
@@ -200,11 +205,19 @@ sealed case class GeoServerConnection(
       case (ex: AssertionError) => addDataStore(workspace, store)
     }
 
+  trait DataSet {
+    def cleanName: String
+    def store: Store
+    def datasetType: String
+    def toXML: xml.Node
+  }
+
   case class FeatureType(
     name: String,
-    store: Store
-  ) {
+    store: DataStore
+  ) extends DataSet {
     def cleanName = name.replaceAll("[\\s-]", "_")
+    val datasetType = "featuretypes"
     def toXML =
       <featureType>
         <name>{ cleanName }</name>
@@ -219,28 +232,66 @@ sealed case class GeoServerConnection(
       </featureType>
   }
 
-  def addFeatureType(featuretype: FeatureType): Int =
-    post(
-      "%s/workspaces/%s/datastores/%s/featuretypes/"
-        .format(base, featuretype.store.workspace.prefix,
-          featuretype.store.name),
-      featuretype.toXML
-    )
-
-  def updateFeatureType(featuretype: FeatureType): Int =
-    put(
-      "%s/workspaces/%s/datastores/%s/featuretypes/%s.xml"
-        .format(base, featuretype.store.workspace.prefix, featuretype.store.name, featuretype.cleanName),
-      featuretype.toXML
-    )
-
-  def setFeatureType(featuretype: FeatureType): Int = {
-    try 
-      updateFeatureType(featuretype)
-    catch {
-      case (ex: AssertionError) => addFeatureType(featuretype)
-    }
+  case class Coverage(
+    name: String,
+    store: CoverageStore
+  ) extends DataSet {
+    def cleanName = name.replaceAll("[\\s-]", "_")
+    val datasetType = "coverages"
+    def toXML =
+      <coverage>
+        <name>{ cleanName }</name>
+        <nativeName>{ cleanName }</nativeName>
+        <namespace>
+          <name>{ store.workspace.prefix }</name>
+        </namespace>
+        <title>{ name }</title>
+        <description>Autoconfiguref by mapnik2geotools</description>
+        <srs>EPSG:900913</srs>
+        <projectionPolicy>FORCE_DECLARED</projectionPolicy>
+        <enabled>true</enabled>
+        <store class="coverageStore">
+          <name>{ store.name }</name>
+        </store>
+        <nativeFormat>GeoTIFF</nativeFormat>
+        <supportedFormats>
+          <string>GIF</string>
+          <string>PNG</string>
+          <string>JPEG</string>
+          <string>TIFF</string>
+          <string>GEOTIFF</string>
+        </supportedFormats>
+        <interpolationMethods>
+          <string>bilinear</string>
+          <string>bicubic</string>
+          <string>nearest neighbour</string>
+        </interpolationMethods>
+        <defaultInterpolationMethod>bicubic</defaultInterpolationMethod>
+      </coverage>
   }
+
+  def addData(d: DataSet): Int =
+    post(
+      Seq(base, "workspaces", d.store.workspace.prefix, d.store.dataType,
+        d.store.name, d.datasetType
+      ).mkString("/"),
+      d.toXML
+    )
+
+  def updateData(d: DataSet): Int =
+    put(
+      Seq(base, "workspaces", d.store.workspace.prefix, d.store.dataType,
+        d.store.name, d.datasetType, d.cleanName + ".xml"
+      ).mkString("/"),
+      d.toXML
+    )
+
+  def setData(d: DataSet): Int =
+    try 
+      updateData(d)
+    catch {
+      case (ex: AssertionError) => addData(d)
+    }
 
   def attachStyles(typename: String, styles: Seq[String]): Int = {
     val message =
