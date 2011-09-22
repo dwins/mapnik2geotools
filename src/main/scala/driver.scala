@@ -14,6 +14,7 @@ case class LocalConversion(
   val printer = new PrettyPrinter(80, 2)
 
   def run() {
+    ensureOutputDirectory()
     val original = xml.XML.load(mapnikFile.getAbsolutePath)
     val convert = 
       new RuleTransformer(
@@ -34,6 +35,22 @@ case class LocalConversion(
     }
     val layers = converted \\ "Layer"
     writeLayers(layers)
+  }
+
+  def ensureOutputDirectory() {
+    if (outputDirectory exists) {
+      require(outputDirectory isDirectory,
+        "Please select a directory, not a file, for output (you chose " + outputDirectory.getAbsolutePath + ")")
+      require(outputDirectory.canWrite && outputDirectory.canRead,
+        "You do not have permissions to the output directory (" + outputDirectory.getAbsolutePath + ")")
+    } else {
+      val parent = outputDirectory.getParentFile
+      require(parent.exists && parent.isDirectory,
+        "The output directory doesn't exist! (I will create one directory, but not multiple nested ones.)  You tried to use " + outputDirectory.getAbsolutePath + " .")
+      require(outputDirectory.canWrite,
+        "You do not have permissions to create the output directory: " + outputDirectory.getAbsolutePath)
+      outputDirectory.mkdir()
+    }
   }
 
   private def save(f: java.io.File, xml: Node) {
