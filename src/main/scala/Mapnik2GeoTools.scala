@@ -4,7 +4,6 @@ import xml._
 import xml.transform._
 
 object Mapnik2GeoTools {
-  import CSS.colors
 
   private def attsToParams(elem: Elem): Seq[Node] =
     (
@@ -109,26 +108,13 @@ object Mapnik2GeoTools {
         case param: Elem if param.label == "CssParameter"
           && param.attributes.asAttrMap.get("name") == Some("stroke") 
           =>
-          val color = param.text.trim
-          val cleaned = 
-            if (colors contains color)
-              colors(color)
-            else if (color.length == 4)
-              color.take(1) + color.tail.flatMap(x => Seq(x, x))
-            else
-              color
-          param.copy(child = Text(cleaned))
+          val color = new Color(param.text.trim)
+          param.copy(child = Text(color.hex))
         case param: Elem if param.label == "CssParameter"
           && param.attributes.asAttrMap.get("name") == Some("fill") 
           =>
-          val color = param.text.trim
-          val cleaned = 
-            if (color.length == 4) {
-              color.take(1) + color.tail.flatMap(x => Seq(x, x))
-            } else {
-              color
-            }
-          param.copy(child = Text(cleaned))
+          val color = new Color(param.text.trim)
+          param.copy(child = Text(color.hex))
         case param: Elem if param.label == "CssParameter"
           && param.attributes.asAttrMap.get("name") == Some("stroke-dasharray")
           =>

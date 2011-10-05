@@ -18,23 +18,38 @@ object Mapnik2GeoToolsSpec extends Specification with PendingUntilFixed {
     } pendingUntilFixed
 
     "expand stroke colors" in {
-      val shorthex =
-        tx(
-          <LineSymbolizer>
-            <CssParameter name="stroke">#888</CssParameter>
-          </LineSymbolizer>
-        )
+      "short hex" >> {
+	      val shorthex =
+	        tx(
+	          <LineSymbolizer>
+                <CssParameter name="stroke">#888</CssParameter>
+	          </LineSymbolizer>
+	        )
+	
+	      shorthex must \\(<CssParameter name="stroke">#888888</CssParameter>)
+      }
 
-      shorthex must \\(<CssParameter name="stroke">#888888</CssParameter>)
-
-      val namedcolor =
-        tx(
-          <LineSymbolizer>
-            <CssParameter name="stroke">salmon</CssParameter>
-          </LineSymbolizer>
-        )
-
-      namedcolor must \\(<CssParameter name="stroke">#fa8072</CssParameter>)
+      "named color" >> {
+	      val namedcolor =
+	        tx(
+	          <LineSymbolizer>
+                <CssParameter name="stroke">salmon</CssParameter>
+              </LineSymbolizer>
+	        )
+	
+	      namedcolor must \\(<CssParameter name="stroke">#fa8072</CssParameter>)
+      }
+      
+      "rgb" >> {
+	      val rgb =
+	        tx(
+	          <LineSymbolizer>
+                <CssParameter name="stroke">rgb(10,0,255)</CssParameter>
+              </LineSymbolizer>
+	        )
+	
+	      rgb must \\(<CssParameter name="stroke">#0a00ff</CssParameter>)
+      }
     }
 
     "translate dasharrays" in {
@@ -130,15 +145,34 @@ object Mapnik2GeoToolsSpec extends Specification with PendingUntilFixed {
         val transformed =
           tx(<TextSymbolizer halo-fill="#fed7a5" name="name" fontset-name="book-fonts" size="8" fill="black" halo-radius="1" placement="line"/>)
 
-        transformed must \("Halo") \("Fill")
+        transformed must \("Halo") \(
+          <Fill>
+            <CssParameter name="fill">#fed7a5</CssParameter>
+          </Fill>
+        )
       }
 
       "rgba" >> {
         val transformed =
-          tx(<TextSymbolizer halo-fill="rgba(255,255,255,0.25)" name="name" fontset-name="bold-fonts" size="12" fill="#2b2b2b" halo-radius="2" dy="0" placement="line" max_char_angle_delta="40" text_convert="toupper"/>)
+          tx(<TextSymbolizer halo-fill="rgba(10,0,255,0.25)" name="name" fontset-name="bold-fonts" size="12" fill="#2b2b2b" halo-radius="2" dy="0" placement="line" max_char_angle_delta="40" text_convert="toupper"/>)
 
-        transformed must \("Halo") \("Fill")
+        transformed must \("Halo") \(
+          <Fill>
+            <CssParameter name="fill">#0a00ff</CssParameter>
+            <CssParameter name="fill-opacity">0.25</CssParameter>
+          </Fill>
+        )
       }
+    }
+
+    "support fill in different formats" in {
+      val transformed =
+        tx(<TextSymbolizer dy="-8" fill="rgb(102,102,255)" fontset-name="book-fonts" halo-radius="1" size="8" vertical-alignment="top"/>)
+
+      transformed must \\(
+        <Fill>
+          <CssParameter name="fill">#6666ff</CssParameter>
+        </Fill>)
     }
   }
 }

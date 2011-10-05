@@ -101,35 +101,27 @@ trait TextProperties {
         </Radius>
         {
           val fill = atts.getOrElse("halo-fill", "#ffffff")
-          if (fill startsWith "#") {
-            <Fill>
-              <CssParameter name="fill">{fill}</CssParameter>
-            </Fill>
-          } else {
-            val trimmed = fill.drop(5).dropRight(1).split(",")
-            val rgb = trimmed.take(3).map(_.toInt)
-            val colorcode = "#%2x%2x%2x".format(rgb: _*)
-            val opacity = trimmed.last.toDouble
-            <Fill>
-              <CssParameter name="fill">{ colorcode }</CssParameter>
-              <CssParameter name="fill-opacity">{ opacity }</CssParameter>
-            </Fill>
-          }
+          val color = new Color(fill)
+          <Fill>
+            <CssParameter name="fill">{ color.hex }</CssParameter>
+            { if (color.hasAlpha())
+                <CssParameter name="fill-opacity">{ color.alpha }</CssParameter>
+            }
+          </Fill>
         }
       </Halo>
 
-  private def extractFill(atts: Map[String, String]) =
+  private def extractFill(atts: Map[String, String]) = {
+    val fill = atts.getOrElse("fill", "#000000")
+    val color = new Color(fill)
     <Fill>
-      { atts.get("fill").toSeq map {
-          case hex if hex.startsWith("#") && hex.length == 7
-            => <CssParameter name="fill">{ hex }</CssParameter>
-          case hex if hex.startsWith("#") && hex.length == 4
-            => <CssParameter name="fill">{ "#" + hex.tail.flatMap(c => c.toString * 2)}</CssParameter>
-          case _
-            => <CssParameter name="fill">#000000</CssParameter>
-        }
+      <CssParameter name="fill">{ color.hex }</CssParameter>
+      {
+        if (color.hasAlpha())
+          <CssParameter name="fill-opacity">{ color.alpha }</CssParameter>
       }
     </Fill>
+  }
 
   private def extractGraphic(atts: Map[String, String]) =
     for (file <- atts.get("file").toSeq) yield
