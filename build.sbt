@@ -1,3 +1,7 @@
+import AssemblyKeys._
+
+seq(assemblySettings: _*)
+
 name := "mn2gt"
 
 version := "0.1"
@@ -10,7 +14,7 @@ fork in run := true
 
 resolvers += ScalaToolsSnapshots
 
-mainClass in Assembly := Some("me.winslow.d.mn2gt.GUI")
+mainClass /* in assembly */ := Some("me.winslow.d.mn2gt.GUI")
 
 libraryDependencies ++= Seq(
   "commons-httpclient" % "commons-httpclient" % "3.1",
