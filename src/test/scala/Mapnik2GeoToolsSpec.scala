@@ -172,7 +172,19 @@ object Mapnik2GeoToolsSpec extends Specification with PendingUntilFixed {
       transformed must \\(
         <Fill>
           <CssParameter name="fill">#6666ff</CssParameter>
-        </Fill>)
+        </Fill>
+      )
+    }
+
+    "new name format" in {
+      val transformed =
+        tx(<TextSymbolizer fill="rgb(0,0,0)" fontset-name="book-fonts" halo-radius="1" size="8">[name]</TextSymbolizer>)
+
+      transformed must \(
+        <Label>
+          <ogc:PropertyName>name</ogc:PropertyName>
+        </Label>
+      )
     }
   }
 }
