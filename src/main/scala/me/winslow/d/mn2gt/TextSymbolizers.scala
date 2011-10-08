@@ -19,10 +19,10 @@ trait TextProperties {
       } yield { name -> faces }
     ) toMap
 
-  private def extractLabel(atts: Map[String, String], text: String) =
+  private def extractLabel(atts: Map[String, String], text: Option[String]) =
     <Label>
       { for {
-          name <- if (text.isEmpty) atts.get("name").toSeq else List(text)
+          name <- (text orElse atts.get("name")).toSeq
           trimmed = name.replaceFirst("^\\[", "").replaceFirst("\\]$", "")
           prop = <ogc:PropertyName>{ trimmed }</ogc:PropertyName>
         } yield
@@ -149,7 +149,7 @@ trait TextProperties {
     val attmap = text.attributes.asAttrMap
 
     <TextSymbolizer>
-      { extractLabel(attmap, text.text) }
+      { extractLabel(attmap, Some(text.text).filter(_ nonEmpty)) }
       { extractFont(attmap) }
       { extractLabelPlacement(attmap) }
       { extractHalo(attmap) }
@@ -169,7 +169,7 @@ trait TextProperties {
     val attmap = shield.attributes.asAttrMap
 
     <TextSymbolizer>
-      { extractLabel(attmap, shield.text) }
+      { extractLabel(attmap, Some(shield.text).filter(_ nonEmpty)) }
       { extractFont(attmap) }
       <LabelPlacement>
         { pointPlacement(attmap) }
