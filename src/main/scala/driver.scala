@@ -17,17 +17,12 @@ case class LocalConversion(
     ensureOutputDirectory()
     val original = xml.XML.load(mapnikFile.getAbsolutePath)
     val convert = 
-      new RuleTransformer(
-        FilterTransformer,
-        PointSymbolizerTransformer,
-        MarkersSymbolizerTransformer,
-        LineSymTransformer,
-        PolygonSymTransformer,
-        RasterSymTransformer,
-        new TextSymbolizerTransformer(original \\ "FontSet")
-      ) andThen (new RuleTransformer(RuleCleanup))
+      new RuleTransformer(Mapnik2GeoTools.rulesFor(original): _*)
+    val cleanup = 
+      new RuleTransformer(RuleCleanup)
+    val fullTransform = convert andThen cleanup
 
-    val converted = convert(original)
+    val converted = fullTransform(original)
     val styles = converted \\ "Style"
     styles.foreach { s =>
       writeStyle(s)
@@ -176,17 +171,12 @@ case class PublishToGeoServer(
   def run() {
     val original = xml.XML.load(mapnikFile.getAbsolutePath)
     val convert = 
-      new RuleTransformer(
-        FilterTransformer,
-        PointSymbolizerTransformer,
-        MarkersSymbolizerTransformer,
-        LineSymTransformer,
-        PolygonSymTransformer,
-        RasterSymTransformer,
-        new TextSymbolizerTransformer(original \\ "FontSet")
-      ) andThen (new RuleTransformer(RuleCleanup, URLResolver))
+      new RuleTransformer(Mapnik2GeoTools.rulesFor(original): _*)
+    val cleanup = 
+      new RuleTransformer(RuleCleanup, URLResolver)
+    val fullTransform = convert andThen cleanup
 
-    val converted = convert(original)
+    val converted = fullTransform(original)
     val styles = converted \\ "Style"
     styles.foreach { s =>
       writeStyle(s)

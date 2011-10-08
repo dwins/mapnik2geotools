@@ -243,8 +243,43 @@ object Mapnik2GeoTools {
       }
   }
 
-  trait Output {
-    def writeStyle(style: Node): Unit
-    def writeLayers(layers: NodeSeq): Unit
+  def rulesFor(mapnikXml: xml.Elem): Seq[RewriteRule] = {
+    val Version = """(\d+)\.(\d+)\.(\d+)""".r
+    
+    val versionString = {
+      val mapnik1VersionString = 
+        (mapnikXml \ "Map" \ "@minimum_version" headOption) map(_.text)
+      val mapnik2VersionString = 
+        (mapnikXml \ "Map" \ "@minimum-version" headOption) map(_.text)
+      mapnik2VersionString orElse mapnik1VersionString
+    }
+
+    versionString match {
+      case None =>
+        // No version string found, just go with the latest and greatest.
+        // @todo: Give the user some feedback about that decision, maybe we
+        // make rulesFor return an Option[Seq[RewriteRule]] or an
+        // Either[Seq[RewriteRule], String] with the error message.
+        Seq(
+          FilterTransformer,
+          PointSymbolizerTransformer,
+          MarkersSymbolizerTransformer,
+          LineSymTransformer,
+          PolygonSymTransformer,
+          RasterSymTransformer,
+          new TextSymbolizerTransformer(mapnikXml \\ "FontSet")
+        )
+      case Some(Version(major, minor, patch)) =>
+        Seq(
+          FilterTransformer,
+          PointSymbolizerTransformer,
+          MarkersSymbolizerTransformer,
+          LineSymTransformer,
+          PolygonSymTransformer,
+          RasterSymTransformer,
+          new TextSymbolizerTransformer(mapnikXml \\ "FontSet")
+        )
+      case Some(v) => sys.error("I don't understand the version number \"%s\"".format(v))
+    }
   }
 }
