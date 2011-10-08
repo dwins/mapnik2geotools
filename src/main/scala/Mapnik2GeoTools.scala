@@ -199,9 +199,9 @@ object Mapnik2GeoTools {
     
     val versionString = {
       val mapnik1VersionString = 
-        (mapnikXml \ "Map" \ "@minimum_version" headOption) map(_.text)
+        (mapnikXml \ "@minimum_version" headOption) map(_.text)
       val mapnik2VersionString = 
-        (mapnikXml \ "Map" \ "@minimum-version" headOption) map(_.text)
+        (mapnikXml \ "@minimum-version" headOption) map(_.text)
       mapnik2VersionString orElse mapnik1VersionString
     }
 
@@ -218,18 +218,30 @@ object Mapnik2GeoTools {
           LineSymTransformer,
           PolygonSymTransformer,
           RasterSymTransformer,
-          new TextSymbolizerTransformer(mapnikXml \\ "FontSet")
+          new mapnik2.TextSymbolizerTransformer(mapnikXml \\ "FontSet")
         )
       case Some(Version(major, minor, patch)) =>
-        Seq(
-          FilterTransformer,
-          PointSymbolizerTransformer,
-          MarkersSymbolizerTransformer,
-          LineSymTransformer,
-          PolygonSymTransformer,
-          RasterSymTransformer,
-          new TextSymbolizerTransformer(mapnikXml \\ "FontSet")
-        )
+        require(major.toInt == 0, major)
+        if (minor.toInt <= 7)
+          Seq(
+            FilterTransformer,
+            PointSymbolizerTransformer,
+            MarkersSymbolizerTransformer,
+            LineSymTransformer,
+            PolygonSymTransformer,
+            RasterSymTransformer,
+            new mapnik1.TextSymbolizerTransformer(mapnikXml \\ "FontSet")
+          )
+        else
+          Seq(
+            FilterTransformer,
+            PointSymbolizerTransformer,
+            MarkersSymbolizerTransformer,
+            LineSymTransformer,
+            PolygonSymTransformer,
+            RasterSymTransformer,
+            new mapnik2.TextSymbolizerTransformer(mapnikXml \\ "FontSet")
+          )
       case Some(v) => sys.error("I don't understand the version number \"%s\"".format(v))
     }
   }
