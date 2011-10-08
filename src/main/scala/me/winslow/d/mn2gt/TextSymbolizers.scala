@@ -19,10 +19,10 @@ trait TextProperties {
       } yield { name -> faces }
     ) toMap
 
-  private def extractLabel(atts: Map[String, String]) =
+  private def extractLabel(atts: Map[String, String], text: String) =
     <Label>
       { for {
-          name <- atts.get("name").toSeq
+          name <- if (text.isEmpty) atts.get("name").toSeq else List(text)
           trimmed = name.replaceFirst("^\\[", "").replaceFirst("\\]$", "")
           prop = <ogc:PropertyName>{ trimmed }</ogc:PropertyName>
         } yield
@@ -101,35 +101,27 @@ trait TextProperties {
         </Radius>
         {
           val fill = atts.getOrElse("halo-fill", "#ffffff")
-          if (fill startsWith "#") {
-            <Fill>
-              <CssParameter name="fill">{fill}</CssParameter>
-            </Fill>
-          } else {
-            val trimmed = fill.drop(5).dropRight(1).split(",")
-            val rgb = trimmed.take(3).map(_.toInt)
-            val colorcode = "#%2x%2x%2x".format(rgb: _*)
-            val opacity = trimmed.last.toDouble
-            <Fill>
-              <CssParameter name="fill">{ colorcode }</CssParameter>
-              <CssParameter name="fill-opacity">{ opacity }</CssParameter>
-            </Fill>
-          }
+          val color = new Color(fill)
+          <Fill>
+            <CssParameter name="fill">{ color.hex }</CssParameter>
+            { if (color.hasAlpha())
+                <CssParameter name="fill-opacity">{ color.alpha }</CssParameter>
+            }
+          </Fill>
         }
       </Halo>
 
-  private def extractFill(atts: Map[String, String]) =
+  private def extractFill(atts: Map[String, String]) = {
+    val fill = atts.getOrElse("fill", "#000000")
+    val color = new Color(fill)
     <Fill>
-      { atts.get("fill").toSeq map {
-          case hex if hex.startsWith("#") && hex.length == 7
-            => <CssParameter name="fill">{ hex }</CssParameter>
-          case hex if hex.startsWith("#") && hex.length == 4
-            => <CssParameter name="fill">{ "#" + hex.tail.flatMap(c => c.toString * 2)}</CssParameter>
-          case _
-            => <CssParameter name="fill">#000000</CssParameter>
-        }
+      <CssParameter name="fill">{ color.hex }</CssParameter>
+      {
+        if (color.hasAlpha())
+          <CssParameter name="fill-opacity">{ color.alpha }</CssParameter>
       }
     </Fill>
+  }
 
   private def extractGraphic(atts: Map[String, String]) =
     for (file <- atts.get("file").toSeq) yield
@@ -157,7 +149,7 @@ trait TextProperties {
     val attmap = text.attributes.asAttrMap
 
     <TextSymbolizer>
-      { extractLabel(attmap) }
+      { extractLabel(attmap, text.text) }
       { extractFont(attmap) }
       { extractLabelPlacement(attmap) }
       { extractHalo(attmap) }
@@ -177,7 +169,7 @@ trait TextProperties {
     val attmap = shield.attributes.asAttrMap
 
     <TextSymbolizer>
-      { extractLabel(attmap) }
+      { extractLabel(attmap, shield.text) }
       { extractFont(attmap) }
       <LabelPlacement>
         { pointPlacement(attmap) }
