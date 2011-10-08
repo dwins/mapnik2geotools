@@ -150,6 +150,8 @@ object CSS {
     "yellow" -> "#ffff00",
     "yellowgreen" -> "#9acd32"
   )
-}
 
-// vim: set ts=4 sw=4 et:
+  object NamedColor {
+    def unapply(name: String): Option[String] = colors.get(name)
+  }
+}
