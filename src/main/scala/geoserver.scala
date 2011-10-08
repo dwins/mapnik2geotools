@@ -8,11 +8,9 @@ sealed case class GeoServerConnection(
   base: String,
   username: String,
   password: String,
-  datadir: String,
   namespacePrefix: String,
   namespaceUri: String
 ) {
-  val dataUrl = new java.io.File(datadir).toURI.toURL
   val client = {
     val url = new java.net.URL(base)
     val c = new httpclient.HttpClient()

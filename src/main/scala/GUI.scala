@@ -122,8 +122,6 @@ object GUI extends SwingApplication {
     val adminField = new TextField("admin", 30)
     val passwordLabel = new Label("Password")
     val passwordField = new PasswordField(30)
-    val datadirLabel = new Label("Data directory")
-    val datadirField = new TextField("/var/lib/geoserver-data", 30)
     val nsPrefixLabel = new Label("Namespace Prefix")
     val nsPrefixField = new TextField("mn2gt", 30)
     val nsUriLabel = new Label("Namespace URI")
@@ -134,13 +132,11 @@ object GUI extends SwingApplication {
         urlField,
         adminField,
         passwordField,
-        datadirField,
         nsPrefixField,
         nsUriField,
         urlLabel,
         adminLabel,
         passwordLabel,
-        datadirLabel,
         nsPrefixLabel,
         nsUriLabel
       )
@@ -149,7 +145,6 @@ object GUI extends SwingApplication {
       urlField,
       adminField,
       passwordField,
-      datadirField,
       nsPrefixField,
       nsUriField
     )
@@ -160,11 +155,10 @@ object GUI extends SwingApplication {
           url <- Some(urlField.text) filter(_ nonEmpty)
           user <- Some(adminField text) filter(_ nonEmpty)
           password <- Some(passwordField password) filter(_ nonEmpty)
-          datadir <- Some(datadirField text) filter(_ nonEmpty)
           nsPrefix <- Some(nsPrefixField text) filter(_ nonEmpty)
           nsUri <- Some(nsUriField text) filter(_ nonEmpty)
         } publish(ConnectionSpecified(GeoServerConnection(
-            url, user, password.mkString, datadir, nsPrefix, nsUri
+            url, user, password.mkString, nsPrefix, nsUri
           )))
       case _ => ()
     }
@@ -182,12 +176,10 @@ object GUI extends SwingApplication {
       adminField -> ((1, 1): Constraints),
       passwordLabel -> ((0, 2): Constraints),
       passwordField -> ((1, 2): Constraints),
-      datadirLabel -> ((0, 3): Constraints),
-      datadirField -> ((1, 3): Constraints),
-      nsPrefixLabel -> ((0, 4): Constraints),
-      nsPrefixField -> ((1, 4): Constraints),
-      nsUriLabel -> ((0, 5): Constraints),
-      nsUriField -> ((1, 5): Constraints)
+      nsPrefixLabel -> ((0, 3): Constraints),
+      nsPrefixField -> ((1, 3): Constraints),
+      nsUriLabel -> ((0, 4): Constraints),
+      nsUriField -> ((1, 4): Constraints)
     )
   }
 

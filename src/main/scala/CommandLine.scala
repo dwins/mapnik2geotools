@@ -31,14 +31,13 @@ object Driver {
     source: java.io.File,
     switches: Map[String, String]
   ): Operation = {
-    if (Set("rest", "datadir") subsetOf switches.keySet)
+    if (switches.keySet contains "rest")
       PublishToGeoServer(
         source,
         GeoServerConnection(
           switches("rest"),
           switches.getOrElse("user", "admin"),
           switches.getOrElse("password", "geoserver"),
-          switches("datadir"),
           switches.getOrElse("prefix", "mn2gt"),
           switches.getOrElse("namespace", "http://mn2gt.com/")
         )

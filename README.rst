@@ -39,9 +39,6 @@ sbt "run [options] {mapnik xml file}"
     * Configure a GeoServer LayerGroup so that you can conveniently reference
       them all in a single WMS request
 
-  You also need to provide:
-    * --datadir=(some path). The tool creates SLD image references based on this parameter.
-
   Additional options which affect the configuration set via REST include:
     
     * --user=(username) [defaults to ``admin``]. This is the username that the

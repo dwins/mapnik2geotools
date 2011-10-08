@@ -184,11 +184,7 @@ case class PublishToGeoServer(
         PolygonSymTransformer,
         RasterSymTransformer,
         new TextSymbolizerTransformer(original \\ "FontSet")
-      ) andThen (new RuleTransformer(
-        RuleCleanup, new URLResolver(
-          new URL(new URL("file:"), connection.datadir)
-        )
-      ))
+      ) andThen (new RuleTransformer(RuleCleanup, URLResolver))
 
     val converted = convert(original)
     val styles = converted \\ "Style"
@@ -204,9 +200,8 @@ case class PublishToGeoServer(
 
   def normalizeStyleName(name: String) = name.replaceAll("\\s+", "-")
 
-  class URLResolver(base: java.net.URL) extends xml.transform.RewriteRule {
-    def resolve(path: String) =
-      new java.net.URL(base, "styles/" + path).toString
+  object URLResolver extends xml.transform.RewriteRule {
+    def resolve(path: String) = "file:" + path
 
     override def transform(n: Node): Seq[Node] = {
       n match {
