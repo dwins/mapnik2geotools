@@ -104,9 +104,9 @@ trait TextProperties {
           val color = new Color(fill)
           <Fill>
             <CssParameter name="fill">{ color.hex }</CssParameter>
-            { if (color.hasAlpha())
-                <CssParameter name="fill-opacity">{ color.alpha }</CssParameter>
-            }
+            { color.alpha.toSeq map { a =>
+                <CssParameter name="fill-opacity">{a}</CssParameter>
+            }}
           </Fill>
         }
       </Halo>
@@ -116,10 +116,9 @@ trait TextProperties {
     val color = new Color(fill)
     <Fill>
       <CssParameter name="fill">{ color.hex }</CssParameter>
-      {
-        if (color.hasAlpha())
-          <CssParameter name="fill-opacity">{ color.alpha }</CssParameter>
-      }
+      { color.alpha.toSeq map { a =>
+          <CssParameter name="fill-opacity">{a}</CssParameter>
+      }}
     </Fill>
   }
 
