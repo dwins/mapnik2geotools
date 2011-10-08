@@ -3,8 +3,8 @@ package me.winslow.d.mn2gt
 class Color(color: String) {
   import CSS.colors
 
-  val Rgb = """^rgb\((\d+),\s*(\d+),\s*(\d+)\)$""".r
-  val Rgba = """^rgba\((\d+),\s*(\d+),\s*(\d+),\s*([\d.]+)\)$""".r
+  val Rgb = """rgb\((\d+),\s*(\d+),\s*(\d+)\)""".r
+  val Rgba = """rgba\((\d+),\s*(\d+),\s*(\d+),\s*([\d.]+)\)""".r
 
   var hex: String = null
   var alpha: String = null
