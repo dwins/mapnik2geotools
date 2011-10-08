@@ -42,7 +42,7 @@ case class LocalConversion(
       val parent = outputDirectory.getParentFile
       require(parent.exists && parent.isDirectory,
         "The output directory doesn't exist! (I will create one directory, but not multiple nested ones.)  You tried to use " + outputDirectory.getAbsolutePath + " .")
-      require(outputDirectory.canWrite,
+      require(outputDirectory.getParentFile.canWrite,
         "You do not have permissions to create the output directory: " + outputDirectory.getAbsolutePath)
       outputDirectory.mkdir()
     }
