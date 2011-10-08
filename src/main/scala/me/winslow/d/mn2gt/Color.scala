@@ -25,19 +25,13 @@ class Color(color: String) {
    */
   val Hex = """#(\p{XDigit}{2})(\p{XDigit}{2})(\p{XDigit}{2})""".r
 
-  var hex: String = null
-  var alpha: String = null
-
-  hex = color match {
-    case NamedColor(hex) => hex
-    case ShortHex(r, g, b) => Seq("#", r, r, g, g, b, b).mkString
-    case Hex(r, g, b) => Seq("#", r, g, b).mkString
-    case Rgb(r, g, b) => rgb2hex(r, g, b)
-    case Rgba(r, g, b, a) =>
-      alpha = a
-      rgb2hex(r, g, b)
-    case _ =>
-      color
+  val (hex, alpha) = color match {
+    case NamedColor(hex) => (hex, null)
+    case ShortHex(r, g, b) => (Seq("#", r, r, g, g, b, b).mkString, null)
+    case Hex(r, g, b) => (Seq("#", r, g, b).mkString, null)
+    case Rgb(r, g, b) => (rgb2hex(r, g, b), null)
+    case Rgba(r, g, b, a) => (rgb2hex(r, g, b), a)
+    case _ => (color, null)
   }
 
   def rgb2hex(r: String, g: String, b: String): String = {
