@@ -15,18 +15,6 @@ object Mapnik2GeoTools {
 
   val MarkersSymTransformer = me.winslow.d.mn2gt.MarkersSymbolizerTransformer
 
-  object LineSymTransformer extends RewriteRule {
-    override def transform(node: Node): Seq[Node] =
-      node match {
-        case e: Elem if e.label == "LineSymbolizer" =>
-          <LineSymbolizer>
-            <Stroke>{ attsToParams(e) ++ e.child }</Stroke>
-          </LineSymbolizer>
-        case n => n
-      }
-  }
-
-
   object RasterSymTransformer extends RewriteRule {
     def convertRasterSymbolizer(e: Elem) = {
       val opacity = e.attributes.asAttrMap.get("opacity")
@@ -216,6 +204,7 @@ object Mapnik2GeoTools {
           PointSymbolizerTransformer,
           MarkersSymbolizerTransformer,
           LineSymTransformer,
+          LinePatternSymTransformer,
           PolygonSymTransformer,
           RasterSymTransformer,
           new mapnik2.TextSymbolizerTransformer(mapnikXml \\ "FontSet")
@@ -228,6 +217,7 @@ object Mapnik2GeoTools {
             PointSymbolizerTransformer,
             MarkersSymbolizerTransformer,
             LineSymTransformer,
+            LinePatternSymTransformer,
             PolygonSymTransformer,
             RasterSymTransformer,
             new mapnik1.TextSymbolizerTransformer(mapnikXml \\ "FontSet")
@@ -238,6 +228,7 @@ object Mapnik2GeoTools {
             PointSymbolizerTransformer,
             MarkersSymbolizerTransformer,
             LineSymTransformer,
+            LinePatternSymTransformer,
             PolygonSymTransformer,
             RasterSymTransformer,
             new mapnik2.TextSymbolizerTransformer(mapnikXml \\ "FontSet")
