@@ -4,11 +4,6 @@ import scala.xml.{ Elem, Node }
 import scala.xml.transform.RewriteRule
 
 object PolygonSymTransformer extends RewriteRule {
-  private def attsToParams(e: Elem): Seq[Node] =
-    e.attributes.asAttrMap.toSeq.map { case (k, v) => 
-      <CssParameter name={k}>{v}</CssParameter>
-    }
-
   def convertPatternSymbolizer(e: Elem): Seq[Node] = {
     val attrs = e.attributes.asAttrMap
 
