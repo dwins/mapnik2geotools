@@ -11,8 +11,6 @@ case class LocalConversion(
   mapnikFile: java.io.File,
   outputDirectory: java.io.File
 ) extends Operation {
-  val printer = new PrettyPrinter(80, 2)
-
   def run() {
     ensureOutputDirectory()
     val original = xml.XML.load(mapnikFile.getAbsolutePath)
@@ -48,12 +46,6 @@ case class LocalConversion(
     }
   }
 
-  private def save(f: java.io.File, xml: Node) {
-    val writer = new java.io.FileWriter(f)
-    writer.write(printer.format(xml))
-    writer.close()
-  }
-
   def writeStyle(style: Node) {
     val name = style.attribute("name").map(_.text).getOrElse("style")
     val wrapper =
@@ -74,7 +66,7 @@ case class LocalConversion(
         </NamedLayer>
       </StyledLayerDescriptor>
 
-    save(new java.io.File(outputDirectory, name + ".sld"), wrapper)
+    XML.save(new java.io.File(outputDirectory, name + ".sld").getAbsolutePath, wrapper)
   }
 
   def writeLayers(layers: NodeSeq) {
