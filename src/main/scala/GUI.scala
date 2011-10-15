@@ -210,11 +210,22 @@ object GUI extends SwingApplication {
     
     val progress = new ProgressBar
     progress.label = "Converting Mapnik style to GeoServer SLD..."
-    // progress.min = 0
-    // progress.max = 100
     progress.indeterminate = true
 
-    contents = progress
+    val closeButton = Button("Okay")(visible = false)
+    closeButton.enabled = false
+
+    def finish() {
+      progress.indeterminate = false
+      progress.max = 1
+      progress.value = 1
+      closeButton.enabled = true
+    }
+
+    contents = new GridBagPanel { 
+      layout += progress -> (0, 0)
+      layout += (closeButton -> (1, 0))
+    }
   }
   
   def startup(args: Array[String]) {
@@ -282,11 +293,17 @@ object GUI extends SwingApplication {
           reporter.setLocationRelativeTo(frame)
           State.job foreach { job =>
             actors.Futures.future {
-              job.run()
-              reporter.progress.indeterminate = false
-              reporter.progress.max = 1
-              reporter.progress.value = 1
-              // reporter.repaint
+              try
+                { sys.error("Boom"); job.run() }
+              catch { case ex =>
+                reporter.visible = false
+                Dialog.showMessage(
+                  message = ex.toString,
+                  messageType = Dialog.Message.Error
+                )
+              }
+
+              reporter.finish()
             }
           }
           reporter.visible = true
