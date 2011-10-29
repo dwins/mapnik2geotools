@@ -211,7 +211,7 @@ object Mapnik2GeoTools {
         )
       case Some(Version(major, minor, patch)) =>
         require(major.toInt == 0, major)
-        if (minor.toInt <= 7)
+        if (minor.toInt < 7 || (minor.toInt == 7 && patch.toInt <= 1))
           Seq(
             FilterTransformer,
             PointSymbolizerTransformer,
