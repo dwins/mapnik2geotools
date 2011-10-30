@@ -113,7 +113,7 @@ object Mapnik2GeoToolsSpec extends Specification with PendingUntilFixed {
   {
     val tx =
       new transform.RuleTransformer(
-        new me.winslow.d.mn2gt.TextSymbolizerTransformer(Nil)
+        new me.winslow.d.mn2gt.mapnik2.TextSymbolizerTransformer(Nil)
       )
 
     "not require a 'type' attribute for shield images" in {
