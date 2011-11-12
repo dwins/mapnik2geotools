@@ -294,7 +294,7 @@ object GUI extends SwingApplication {
           State.job foreach { job =>
             actors.Futures.future {
               try
-                { sys.error("Boom"); job.run() }
+                job.run()
               catch { case ex =>
                 reporter.visible = false
                 Dialog.showMessage(
