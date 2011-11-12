@@ -43,12 +43,13 @@ object Driver {
         )
       )
     else {
-      val out = switches.get("output").map(new java.io.File(_))
-      val resolved = 
-        if (out forall (_ isAbsolute))
-          out.get
+      val isAbsolute = (s: String) => (new java.io.File(s)).isAbsolute
+      val resolve = (s: String) =>
+        if (isAbsolute(s))
+          new java.io.File(s)
         else
-          new java.io.File(source.getParent(), switches.getOrElse("output", "output"))
+          new java.io.File(source.getParent(), s)
+      val resolved = resolve(switches.getOrElse("output","output"))
       LocalConversion(source, resolved) 
     }
   }
