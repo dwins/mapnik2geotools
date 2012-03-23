@@ -83,7 +83,12 @@ case class LocalConversion(
         settings = params(layer \ "Datasource")
         if settings contains "table"
       } yield {
-        val db = (settings("user"), settings("host"), settings("port"), settings("dbname"))
+        val db = (
+          settings.get("user"),
+          settings("host"),
+          settings.get("port"),
+          settings("dbname")
+       )
         val name = layer.attributes.asAttrMap("name")
         val table = settings("table")
         val styles = layer \ "StyleName" map(_.text)
@@ -100,7 +105,9 @@ case class LocalConversion(
     val databases = datalayers map(_._2) distinct
 
     for (database <- databases) {
-      val writer = new java.io.FileWriter(new java.io.File(outputDirectory, database._4 + ".sql"))
+      val writer = new java.io.FileWriter(
+        new java.io.File(outputDirectory, database._4 + ".sql")
+      )
       for {
         (name, db, table, styles) <- datalayers
         where <- selectPattern.findFirstMatchIn(table) map(_.group(1).trim)
