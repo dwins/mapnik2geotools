@@ -101,15 +101,15 @@ object MarkersSymbolizerTransformer extends RewriteRule {
               <Size>{ math.max(width, height) }</Size>
             </Graphic>
           case None =>
-            val fillXml = 
+            val fillXml = for { f <- fill } yield
               <Fill>
-                <CssParameter name="fill">{fill.get}</CssParameter>
+                <CssParameter name="fill">{f}</CssParameter>
                 <CssParameter name="fill-opacity">{opacity}</CssParameter>
-              </Fill>
+              </Fill>;
 
-            val strokeXml = 
+            val strokeXml = for { s <- stroke } yield
               <Stroke>
-                <CssParameter name="stroke">{stroke.get}</CssParameter>
+                <CssParameter name="stroke">{s}</CssParameter>
                 <CssParameter name="stroke-opacity">{strokeOpacity}</CssParameter>
                 <CssParameter name="stroke-width">{strokeWidth}</CssParameter>
               </Stroke>;
