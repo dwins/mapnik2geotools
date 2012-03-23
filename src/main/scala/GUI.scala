@@ -297,8 +297,12 @@ object GUI extends SwingApplication {
                 job.run()
               catch { case ex =>
                 reporter.visible = false
+                val buff = new java.io.StringWriter
+                val writer = new java.io.PrintWriter(buff)
+                ex.printStackTrace(writer)
+                writer.flush()
                 Dialog.showMessage(
-                  message = ex.toString,
+                  message = buff.toString,
                   messageType = Dialog.Message.Error
                 )
               }
