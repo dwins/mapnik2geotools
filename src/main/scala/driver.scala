@@ -75,7 +75,7 @@ case class LocalConversion(
         p => (p.attributes.asAttrMap("name"), p.text)
       } toMap
 
-    val selectPattern = """(?si:\(SELECT\s+(.*)\)\s+AS)""".r
+    val selectPattern = """(?si:\(\s+SELECT\s+(.*)\)\s+AS)""".r
 
     val datalayers =
       for {
@@ -108,6 +108,10 @@ case class LocalConversion(
       val writer = new java.io.FileWriter(
         new java.io.File(outputDirectory, database._4 + ".sql")
       )
+      for {
+        (_, _, table, _) <- datalayers
+        if ! selectPattern.findFirstMatchIn(table).isDefined
+      } println("No match for " + table)
       for {
         (name, db, table, styles) <- datalayers
         where <- selectPattern.findFirstMatchIn(table) map(_.group(1).trim)
