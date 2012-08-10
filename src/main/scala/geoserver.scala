@@ -139,10 +139,11 @@ sealed case class GeoServerConnection(
     )
     lazy val body = 
       io.Source.fromInputStream(request.getResponseBodyAsStream()).mkString
-    client.executeMethod(request).ensuring(
-      { _ == 201 },
-      "POST %s failed with message %s; was trying to send \n %s".format(url, body, message)
+    val status = client.executeMethod(request)
+    require(status == 201, 
+      "POST %s failed with status %d and message %s; was trying to send \n %s".format(url, status, body, message)
     )
+    status
   }
 
   def put(url: String, message: Node, mime: String = "application/xml")

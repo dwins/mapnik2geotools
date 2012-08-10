@@ -75,7 +75,7 @@ case class LocalConversion(
         p => (p.attributes.asAttrMap("name"), p.text)
       } toMap
 
-    val selectPattern = """(?si:\(\s+SELECT\s+(.*)\)\s+AS)""".r
+    val selectPattern = """(?si:\(\s*SELECT\s+(.*)\)\s*AS)""".r
 
     val datalayers =
       for {
@@ -85,9 +85,9 @@ case class LocalConversion(
       } yield {
         val db = (
           settings.get("user"),
-          settings("host"),
+          settings.get("host"),
           settings.get("port"),
-          settings("dbname")
+          settings.get("dbname")
        )
         val name = layer.attributes.asAttrMap("name")
         val table = settings("table")
@@ -111,7 +111,7 @@ case class LocalConversion(
       for {
         (_, _, table, _) <- datalayers
         if ! selectPattern.findFirstMatchIn(table).isDefined
-      } println("No match for " + table)
+      } println("%s does not match for [%s]" format (selectPattern, table))
       for {
         (name, db, table, styles) <- datalayers
         where <- selectPattern.findFirstMatchIn(table) map(_.group(1).trim)

@@ -34,7 +34,6 @@ class Color(color: String) {
     case _ => (color, None)
   }
 
-  def rgb2hex(r: String, g: String, b: String): String = {
+  def rgb2hex(r: String, g: String, b: String): String =
     "#%02x%02x%02x".format(r.toInt, g.toInt, b.toInt)
-  }
 }
