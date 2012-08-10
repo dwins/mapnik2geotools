@@ -95,7 +95,12 @@ to get GeoServer fully setup:
 
 bugs/feature requests
 ---------------------
-many. let me know what you find :)
+many. let me know what you find :) 
+
+There is an issue tracker for this project on Github: https://github.com/dwins/mapnik2geotools/issues
+
+If you don't want to use Github feel free to ask on the mailing list (noted below) as well.
+Or just ask in the #geoserver channel on Freenode IRC: http://webchat.freenode.net/?channels=geoserver
 
 mailing list
 ------------
