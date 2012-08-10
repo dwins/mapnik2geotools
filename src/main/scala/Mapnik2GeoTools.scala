@@ -215,7 +215,7 @@ object Mapnik2GeoTools {
           new mapnik2.TextSymbolizerTransformer(mapnikXml \\ "FontSet")
         )
       case Some(Version(major, minor, patch)) =>
-        require(major.toInt == 0, major)
+        require(major.toInt == 0, "Major version must be 0")
         if (minor.toInt < 7 || (minor.toInt == 7 && patch.toInt <= 1))
           Seq(
             FilterTransformer,
