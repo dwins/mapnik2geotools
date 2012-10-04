@@ -15,12 +15,12 @@ setup
  
 3. ``sbt compile`` to build everything
  
-4. ``sbt "run my_mapnik_file.xml"`` to run it (see options below)
+4. ``sbt run`` to run the gui, or ``sbt run-main me.winslow.d.mn2gt.Driver mapnikmap.xml`` for batch mode conversion (see options below)
 
 options (overview)
 ------------------
 
-sbt "run [options] {mapnik xml file}"
+sbt "run-main me.winslow.d.mn2gt.Driver [options] {mapnik xml file}"
 
 * -- rest= (url to geoserver rest api, like
   http://localhost:8080/geoserver/rest).  This tells mapnik2geotools to make
