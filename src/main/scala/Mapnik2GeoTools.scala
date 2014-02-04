@@ -113,7 +113,7 @@ object Mapnik2GeoTools {
       }
 
     val lessOrEqual =
-      (property <~ "<=") ~ value map { case a ~ b =>
+      (property <~ ("<=" | "le")) ~ value map { case a ~ b =>
         <PropertyIsLessThanOrEqualTo>{a}{b}</PropertyIsLessThanOrEqualTo>
       }
 
