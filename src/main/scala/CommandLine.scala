@@ -13,8 +13,8 @@ object Driver {
       case Seq(switch, xs @ _*) 
         if (switch startsWith "--") && (switch contains "=")
         =>
-        val name = switch drop 2 takeWhile("=" !=)
-        val value = switch dropWhile("=" !=) tail
+        val name = switch drop 2 takeWhile('=' !=)
+        val value = switch dropWhile('=' !=) tail
         val (switches, args) = parseOpts(xs)
         (switches + (name -> value), args)
       case Seq(switch, value, xs @ _*) if switch startsWith "--" =>
