@@ -9,7 +9,7 @@ something `GeoTools <http://geotools.org/>`_ and
 setup
 -----
 
-1. Install SBT. See the instructions at http://simple-build-tool.googlecode.com/
+1. Install SBT. See the instructions at http://www.scala-sbt.org/release/tutorial/Setup.html
 
 2. ``sbt update`` to fetch dependencies
  
